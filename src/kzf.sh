@@ -1,34 +1,33 @@
 #!/usr/bin/env bash
-set -eo pipefail
+set -e -o pipefail
 
 progname="$(basename "$0")"
 
 # declare and set flags
-flags="$(\
+eval set -- "$(\
 	getopt \
-		-n "$0" \
-		-o "hAc:n:w:" \
-		-l "help,all-namespaces,context:,namespace:,query:,tail:,watch:" \
+		-n "$progname" \
+		-o 'hAc:n:w:' \
+		-l 'help,all-namespaces,context:,namespace:,query:,tail:,watch:' \
 		-- \
 		"$@" \
 )"
 
-eval set -- "$flags"
-
-# default flags
-_flag_watch='4s'
-_flag_tail='-1'
+declare -A flag=(
+	['watch']='4s'
+	['tail']='-1'
+)
 
 # parse args
 for opt; do
 	case "$opt" in
-		-A|--all-namespaces) _flag_all_namespaces="$1"; shift 2 ;;
-		-c|--context) _flag_context="$1"; shift 2 ;;
-		-h|--help) _flag_help="$1"; shift 2 ;;
-		-n|--namespace) _flag_namespace="$1"; shift 2 ;;
-		-q|--query) _flag_query="$1"; shift 2 ;;
-		-t|--tail) _flag_tail="$1"; shift 2 ;;
-		-w|--watch) _flag_watch="$1"; shift 2 ;;
+		-A|--all-namespaces)    flag["all-namespaces"]="--all-namespaces"; shift 2 ;;
+		-c|--context)           flag["context"]="$1";                      shift 2 ;;
+		-h|--help)              flag["help"]="--help";                     shift 2 ;;
+		-n|--namespace)         flag["namespace"]="$1";                    shift 2 ;;
+		-q|--query)             flag["query"]="$1";                        shift 2 ;;
+		-t|--tail)              flag["tail"]="$1";                         shift 2 ;;
+		-w|--watch)             flag["watch"]="$1";                        shift 2 ;;
 		--) break ;;
 	esac
 done
@@ -38,7 +37,7 @@ if [ "$1" = "--" ]; then
 	shift
 fi
 
-if [ -n "$_flag_help" ]; then
+if [ -n "${flag["help"]}" ]; then
 	echo "Usage: $progname [<resource>] [flags]
 
 kubectl fuzzy finder
@@ -64,15 +63,15 @@ fi
 
 kubectl_resource="$1"
 
-watch_enabled=$(( "${_flag_watch%[a-z]}" > 0 ))
+watch_enabled=$(( "${flag["watch"]%[a-z]}" > 0 ))
 
 fzf_kubectl_resource="{1}"
-if [ -n "$_flag_all_namespaces" ]; then
+if [ -n "${flag["all-namespaces"]}" ]; then
 	fzf_kubectl_resource="{2}"
 fi
 
-fzf_kubectl_namespace="$_flag_namespace"
-if [ -n "$_flag_all_namespaces" ]; then
+fzf_kubectl_namespace="${flag["namespace"]}"
+if [ -n "${flag["all-namespaces"]}" ]; then
 	fzf_kubectl_namespace="{1}"
 fi
 
@@ -82,8 +81,8 @@ fi
 
 if command -v viddy &>/dev/null; then
 	viddy_opts=()
-	if [ $watch_enabled -eq 1 ]; then
-		viddy_opts+=("--interval" "$_flag_watch")
+	if [ "$watch_enabled" -eq 1 ]; then
+		viddy_opts+=("--interval" "${flag["watch"]}")
 	fi
 
 	function kzf_live_pager {
@@ -123,7 +122,7 @@ if hash kubecolor 2>/dev/null; then
 	kubectl_common_opts+=("--force-colors")
 fi
 
-if [ -n "$_flag_select_namespace" ]; then
+if [ -n "${flag["select_namespace"]}" ]; then
 	echo "Unimplemented!" >/dev/stderr
 	exit
 fi
@@ -132,8 +131,8 @@ if [ -z "$kubectl_resource" ]; then
 	api_resources="$(\
 		$kubectl_cmd api-resources \
 			"${kubectl_common_opts[@]}" \
-			--context="$_flag_context" \
-			--namespace="$_flag_namespace" \
+			--context="${flag["context"]}" \
+			--namespace="${flag["namespace"]}" \
 			--output name \
 			--no-headers
 	)"
@@ -144,7 +143,7 @@ fi
 kubectl_describe=(
 	"$kubectl_cmd" "describe" "$resource"
 	"${kubectl_common_opts[*]}"
-	"--context=$_flag_context"
+	"--context=${flag["context"]}"
 	"--namespace=$fzf_kubectl_namespace"
 	"$kubectl_resource"
 	"$fzf_kubectl_resource"
@@ -153,16 +152,16 @@ kubectl_describe=(
 kubectl_get=(
 	"$kubectl_cmd" "get" "$kubectl_resource"
 	"${kubectl_common_opts[@]}"
-	"--context=$_flag_context"
-	"--namespace=$_flag_namespace"
+	"--context=${flag["context"]}"
+	"--namespace=${flag["namespace"]}"
 	"--show-labels"
-	"$_flag_all_namespaces"
+	"${flag["all-namespaces"]}"
 )
 
 kubectl_get_yaml=(
 	"$kubectl_cmd" "get" "${kubectl_resource} ${fzf_kubectl_resource}"
 	"${kubectl_common_opts[@]}"
-	"--context=$_flag_context"
+	"--context=${flag["context"]}"
 	"--namespace=$fzf_kubectl_namespace"
 	"--output=yaml"
 )
@@ -170,18 +169,18 @@ kubectl_get_yaml=(
 kubectl_logs=(
 	"$kubectl_cmd" "logs" "${kubectl_resource}/${fzf_kubectl_resource}"
 	"${kubectl_common_opts[@]}"
-	"--context=$_flag_context"
+	"--context=${flag["context"]}"
 	"--follow"
 	"--namespace=$fzf_kubectl_namespace"
 )
 
 fzf_watch_opts=()
-if [ $watch_enabled -eq 1 ]; then
+if [ "$watch_enabled" -eq 1 ]; then
 	fzf_watch_opts+=(
 		'--listen'
 		"--bind=start:+bg-transform:
 			while true; do
-				sleep ${_flag_watch@Q}
+				sleep ${flag["watch"]@Q}
 				curl -X POST \"localhost:\$FZF_PORT\" -d 'reload:${kubectl_get[*]}' --silent
 			done &
 		"
