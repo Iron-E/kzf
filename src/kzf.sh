@@ -7,8 +7,8 @@ progname="$(basename "$0")"
 eval set -- "$(\
 	getopt \
 		-n "$progname" \
-		-o 'hAc:n:w:' \
-		-l 'help,all-namespaces,context:,namespace:,query:,tail:,watch:' \
+		-o 'hA::c:n:w:' \
+		-l 'help,all-namespaces::,context:,namespace:,query:,tail:,watch:' \
 		-- \
 		"$@" \
 )"
@@ -18,16 +18,29 @@ declare -A flag=(
 	['tail']='-1'
 )
 
+# args:
+#
+# 1. name of the flag to set
+# 2. "true", "false", or no value (defaults to "true")
+function set_boolean_flag {
+	if [ "$2" = "false" ]; then
+		unset 'flag["$1"]'
+		return
+	fi
+
+	flag["$1"]="--$1"
+}
+
 # parse args
-for opt; do
+for opt in "$@"; do
 	case "$opt" in
-		-A|--all-namespaces)    flag["all-namespaces"]="--all-namespaces"; shift 2 ;;
-		-c|--context)           flag["context"]="$1";                      shift 2 ;;
-		-h|--help)              flag["help"]="--help";                     shift 2 ;;
-		-n|--namespace)         flag["namespace"]="$1";                    shift 2 ;;
-		-q|--query)             flag["query"]="$1";                        shift 2 ;;
-		-t|--tail)              flag["tail"]="$1";                         shift 2 ;;
-		-w|--watch)             flag["watch"]="$1";                        shift 2 ;;
+		-A|--all-namespaces)   set_boolean_flag "all-namespaces" "$2";   shift 2 ;;
+		-c|--context)          flag["context"]="$2";                     shift 2 ;;
+		-h|--help)             flag["help"]="--help";                    shift 2 ;;
+		-n|--namespace)        flag["namespace"]="$2";                   shift 2 ;;
+		-q|--query)            flag["query"]="$2";                       shift 2 ;;
+		-t|--tail)             flag["tail"]="$2";                        shift 2 ;;
+		-w|--watch)            flag["watch"]="$2";                       shift 2 ;;
 		--) break ;;
 	esac
 done
