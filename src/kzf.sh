@@ -112,9 +112,7 @@ fi
 
 fzf_common_opts=(\
 	"--ansi" \
-	"--header-lines=1" \
-	"--delimiter=\s+" \
-	"--accept-nth=$fzf_kubectl_resource"
+	"--with-shell=bash -c"
 )
 
 declare -a kubectl_common_opts
@@ -140,7 +138,7 @@ if [ -z "$kubectl_resource" ]; then
 			--no-headers
 	)"
 
-	kubectl_resource="$(echo "$api_resources" | fzf --ansi)"
+	kubectl_resource="$(echo "$api_resources" | fzf "${fzf_common_opts[@]}")"
 fi
 
 kubectl_describe=(
@@ -190,9 +188,12 @@ if [ $watch_enabled -eq 1 ]; then
 	)
 fi
 
-"${kubectl_get[@]}" | SHELL="/usr/bin/bash" fzf \
+FZF_DEFAULT_COMMAND="${kubectl_get[*]}" fzf \
 	"${fzf_common_opts[@]}" \
 	"${fzf_watch_opts[@]}" \
+	--header-lines=1 \
+	--delimiter='\s+' \
+	--accept-nth="$fzf_kubectl_resource" \
 	--bind="ctrl-r:+refresh-preview+reload:${kubectl_get[*]}" \
 	--bind='f1:change-preview-window(right,30%|hidden)' \
 	--preview="echo 'test'" \
