@@ -8,7 +8,7 @@ eval set -- "$(\
 	getopt \
 		-n "$progname" \
 		-o 'hA::c:n:w:' \
-		-l 'help,all-namespaces::,context:,namespace:,query:,select-namespace::,tail:,watch:' \
+		-l 'help,all-namespaces::,context:,namespace:,query:,select-context::,select-namespace::,tail:,watch:' \
 		-- \
 		"$@" \
 )"
@@ -49,6 +49,7 @@ for opt in "$@"; do
 		-h|--help)             flag["help"]="--help";                    shift 2 ;;
 		-n|--namespace)        flag["namespace"]="$2";                   shift 2 ;;
 		-q|--query)            flag["query"]="$2";                       shift 2 ;;
+		   --select-context)   set_boolean_flag "select-context" "$2";   shift 2 ;;
 		   --select-namespace) set_boolean_flag "select-namespace" "$2"; shift 2 ;;
 		-t|--tail)             flag["tail"]="$2";                        shift 2 ;;
 		-w|--watch)            flag["watch"]="$2";                       shift 2 ;;
@@ -71,6 +72,7 @@ Arguments:
 
 Flags:
   -h, --help                Show context-sensitive help.
+      --select-context      Fuzzy find the context to view resoruces in.
       --select-namespace    Fuzzy find the namespace to view resoruces in.
   -w, --watch=DURATION      How often to refresh Kubernetes resources.
 
@@ -137,6 +139,23 @@ fzf_kubectl_opts=(
 	'--header-lines=1'
 	--delimiter='\s+'
 )
+
+if [ -n "${flag["select-context"]}" ]; then
+	contexts="$(
+		"$kubectl_cmd" config get-contexts \
+			"${kubectl_common_opts[@]}"
+	)"
+
+	context="$(\
+		echo "$contexts" \
+		| fzf \
+			"${fzf_common_opts[@]}" \
+			"${fzf_kubectl_opts[@]}" \
+			--accept-nth=2
+	)"
+
+	flag["context"]="$context"
+fi
 
 if [ -n "${flag["select-namespace"]}" ]; then
 	unset 'flag["all-namespaces"]' 'flag["namespace"]'
@@ -249,5 +268,17 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" fzf \
 	--preview-window="30%,hidden" \
 	--bind="alt-i:execute:$(kzf_live_pager "${kubectl_describe[*]}")" \
 	--bind="alt-l:execute:$(kzf_log_pager "${kubectl_logs[@]}")" \
-	--bind="alt-n:become:$0 $(fmt_flags) --all-namespaces=false --select-namespace $*" \
-	--bind="alt-y:execute:${kubectl_get_yaml[*]} | $PAGER"
+	--bind="alt-y:execute:${kubectl_get_yaml[*]} | $PAGER" \
+	--bind="alt-c:become:\
+		$0 $(fmt_flags) \
+			--select-context \
+			--select-namespace=false \
+			$* \
+	" \
+	--bind="alt-n:become:\
+		$0 $(fmt_flags) \
+			--all-namespaces=false \
+			--select-context=false \
+			--select-namespace \
+			$* \
+	"
