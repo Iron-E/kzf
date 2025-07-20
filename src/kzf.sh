@@ -156,8 +156,6 @@ if [ -n "${flag["select-context"]-}" ]; then
 fi
 
 if [ -n "${flag["select-namespace"]-}" ]; then
-	unset 'flag["all-namespaces"]' 'flag["namespace"]'
-
 	namespaces="$(\
 		"$kubectl_cmd" get namespaces \
 			"${kubectl_common_opts[@]}" \
@@ -170,7 +168,8 @@ if [ -n "${flag["select-namespace"]-}" ]; then
 	$(echo "$namespaces" | tail -n +2)
 EOF
 
-	namespace="$(\
+	set +e
+	namespace="$(
 		echo "$namespaces" \
 		| fzf \
 			"${fzf_common_opts[@]}" \
@@ -178,10 +177,16 @@ EOF
 			--accept-nth=1
 	)"
 
-	case "$namespace" in
-		--all-namespaces) set_boolean_flag all-namespaces true ;;
-		*) flag["namespace"]="$namespace" ;;
-	esac
+	# shellcheck disable=SC2181
+	if [ $? = 0 ]; then
+		unset 'flag["all-namespaces"]' 'flag["namespace"]'
+		case "$namespace" in
+			--all-namespaces) set_boolean_flag all-namespaces true ;;
+			*) flag["namespace"]="$namespace" ;;
+		esac
+	fi
+
+	set -e
 fi
 
 if [ -z "$kubectl_resource" ]; then
