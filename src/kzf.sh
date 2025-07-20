@@ -187,14 +187,18 @@ EOF
 fi
 
 if [ -z "$kubectl_resource" ]; then
-	api_resources="$(\
-		"$kubectl_cmd" api-resources \
-			"${kubectl_common_opts[@]}" \
-			--context="${flag["context"]-}" \
-			--namespace="${flag["namespace"]-}" \
-			--output name \
-			--no-headers
-	)"
+	api_resources=\
+"all
+$(\
+	"$kubectl_cmd" api-resources \
+		"${kubectl_common_opts[@]}" \
+		--context="${flag["context"]-}" \
+		--namespace="${flag["namespace"]-}" \
+		--output name \
+		--no-headers
+)"
+
+	api_resources="$(echo "$api_resources" | sort)"
 
 	kubectl_resource="$(echo "$api_resources" | fzf "${fzf_common_opts[@]}")"
 	set -- "$kubectl_resource" "${@:2}" # update positional args
