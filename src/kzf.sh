@@ -8,7 +8,7 @@ eval set -- "$(\
 	getopt \
 		-n "$progname" \
 		-o 'hA::c:n:w:' \
-		-l 'help,all-namespaces::,context:,namespace:,query:,select-context::,select-namespace::,tail:,watch:' \
+		-l 'help,all-namespaces::,context:,namespace:,select-context::,select-namespace::,tail:,watch:' \
 		-- \
 		"$@" \
 )"
@@ -48,7 +48,6 @@ for opt in "$@"; do
 		-c|--context)          flag["context"]="$2";                     shift 2 ;;
 		-h|--help)             flag["help"]="--help";                    shift 2 ;;
 		-n|--namespace)        flag["namespace"]="$2";                   shift 2 ;;
-		-q|--query)            flag["query"]="$2";                       shift 2 ;;
 		   --select-context)   set_boolean_flag "select-context" "$2";   shift 2 ;;
 		   --select-namespace) set_boolean_flag "select-namespace" "$2"; shift 2 ;;
 		-t|--tail)             flag["tail"]="$2";                        shift 2 ;;
@@ -63,21 +62,19 @@ if [ "${1-}" = "--" ]; then
 fi
 
 if [ -n "${flag["help"]-}" ]; then
-	echo "Usage: $progname [<resource>] [flags]
+	echo "Usage: $progname [flags] [<resource> [<query>]]
 
 kubectl fuzzy finder
 
 Arguments:
   <resource>    The type of resource to fuzzy find (e.g. 'pods').
+  <query>       The initial fzf query.
 
 Flags:
   -h, --help                Show context-sensitive help.
       --select-context      Fuzzy find the context to view resoruces in.
       --select-namespace    Fuzzy find the namespace to view resoruces in.
   -w, --watch=DURATION      How often to refresh Kubernetes resources.
-
-fzf
-  -q, --query=STRING    The default fzf search text.
 
 kubectl
   -A, --all-namespaces      Show resources from every namespace.
@@ -89,6 +86,7 @@ kubectl
 fi
 
 kubectl_resource="${1-}"
+fzf_query="${2-}"
 
 watch_enabled=$(( "${flag["watch"]%[a-z]}" > 0 ))
 
@@ -264,6 +262,7 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" fzf \
 	"${fzf_common_opts[@]}" \
 	"${fzf_kubectl_opts[@]}" \
 	"${fzf_watch_opts[@]}" \
+	--query="$fzf_query" \
 	--accept-nth="$fzf_kubectl_resource" \
 	--bind="ctrl-r:+refresh-preview+reload:${kubectl_get[*]}" \
 	--bind='f1:change-preview-window(right,30%|hidden)' \
@@ -277,18 +276,23 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" fzf \
 		$0 $(fmt_flags) \
 			--select-context \
 			--select-namespace=false \
-			$* \
+			${*:1:1} \
+			{q} \
+			${*:3} \
 	" \
 	--bind="alt-n:become:\
 		$0 $(fmt_flags) \
 			--select-context=false \
 			--select-namespace \
-			$* \
+			${*:1:1} \
+			{q} \
+			${*:3} \
 	" \
 	--bind="alt-k:become:\
 		$0 $(fmt_flags) \
 			--select-context=false \
 			--select-namespace=false \
 			'' \
-			${*:2} \
+			{q} \
+			${*:3} \
 	" \
