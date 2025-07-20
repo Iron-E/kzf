@@ -70,8 +70,9 @@ Arguments:
   <resource>    The type of resource to fuzzy find (e.g. 'pods').
 
 Flags:
-  -h, --help              Show context-sensitive help.
-  -w, --watch=DURATION    How often to refresh Kubernetes resources.
+  -h, --help                Show context-sensitive help.
+      --select-namespace    Fuzzy find the namespace to view resoruces in.
+  -w, --watch=DURATION      How often to refresh Kubernetes resources.
 
 fzf
   -q, --query=STRING    The default fzf search text.
@@ -88,20 +89,6 @@ fi
 kubectl_resource="$1"
 
 watch_enabled=$(( "${flag["watch"]%[a-z]}" > 0 ))
-
-fzf_kubectl_resource="{1}"
-if [ -n "${flag["all-namespaces"]}" ]; then
-	fzf_kubectl_resource="{2}"
-fi
-
-fzf_kubectl_namespace="${flag["namespace"]}"
-if [ -n "${flag["all-namespaces"]}" ]; then
-	fzf_kubectl_namespace="{1}"
-fi
-
-if [ ! -v PAGER ]; then
-	echo "$progname could not find an appropriate pager. Please install viddy, bat, or set \$PAGER"
-fi
 
 if command -v viddy &>/dev/null; then
 	viddy_opts=()
@@ -133,11 +120,6 @@ else
 	}
 fi
 
-fzf_common_opts=(
-	"--ansi"
-	"--with-shell=bash -c"
-)
-
 declare -a kubectl_common_opts
 kubectl_cmd=kubectl
 
@@ -146,14 +128,48 @@ if hash kubecolor 2>/dev/null; then
 	kubectl_common_opts+=("--force-colors")
 fi
 
+fzf_common_opts=(
+	"--ansi"
+	"--with-shell=bash -c"
+)
+
+fzf_kubectl_opts=(
+	'--header-lines=1'
+	--delimiter='\s+'
+)
+
 if [ -n "${flag["select-namespace"]}" ]; then
-	echo "Unimplemented!"
-	exit
+	unset 'flag["all-namespaces"]' 'flag["namespace"]'
+
+	namespaces="$(\
+		"$kubectl_cmd" get namespaces \
+			"${kubectl_common_opts[@]}" \
+			--context="${flag["context"]}"
+	)"
+
+	read -r -d '' namespaces <<-EOF || true # read returns 1 on EOF
+	$(echo "$namespaces" | head -n1)
+	--all-namespaces
+	$(echo "$namespaces" | tail -n +2)
+EOF
+
+	namespace="$(\
+		echo "$namespaces" \
+		| fzf \
+			"${fzf_common_opts[@]}" \
+			"${fzf_kubectl_opts[@]}" \
+			--accept-nth=1
+	)"
+
+	case "$namespace" in
+		--all-namespaces) set_boolean_flag all-namespaces true ;;
+		*) flag["namespace"]="$namespace" ;;
+	esac
 fi
 
 if [ -z "$kubectl_resource" ]; then
 	api_resources="$(\
-		$kubectl_cmd api-resources \
+		"$kubectl_cmd" api-resources \
 			"${kubectl_common_opts[@]}" \
 			--context="${flag["context"]}" \
 			--namespace="${flag["namespace"]}" \
@@ -162,6 +178,16 @@ if [ -z "$kubectl_resource" ]; then
 	)"
 
 	kubectl_resource="$(echo "$api_resources" | fzf "${fzf_common_opts[@]}")"
+fi
+
+fzf_kubectl_resource="{1}"
+if [ -n "${flag["all-namespaces"]}" ]; then
+	fzf_kubectl_resource="{2}"
+fi
+
+fzf_kubectl_namespace="${flag["namespace"]}"
+if [ -n "${flag["all-namespaces"]}" ]; then
+	fzf_kubectl_namespace="{1}"
 fi
 
 kubectl_describe=(
@@ -213,9 +239,8 @@ fi
 
 FZF_DEFAULT_COMMAND="${kubectl_get[*]}" fzf \
 	"${fzf_common_opts[@]}" \
+	"${fzf_kubectl_opts[@]}" \
 	"${fzf_watch_opts[@]}" \
-	--header-lines=1 \
-	--delimiter='\s+' \
 	--accept-nth="$fzf_kubectl_resource" \
 	--bind="ctrl-r:+refresh-preview+reload:${kubectl_get[*]}" \
 	--bind='f1:change-preview-window(right,30%|hidden)' \
@@ -224,5 +249,5 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" fzf \
 	--preview-window="30%,hidden" \
 	--bind="alt-i:execute:$(kzf_live_pager "${kubectl_describe[*]}")" \
 	--bind="alt-l:execute:$(kzf_log_pager "${kubectl_logs[@]}")" \
-	--bind="alt-n:become:$0 $(fmt_flags) --select-namespace $*" \
+	--bind="alt-n:become:$0 $(fmt_flags) --all-namespaces=false --select-namespace $*" \
 	--bind="alt-y:execute:${kubectl_get_yaml[*]} | $PAGER"
