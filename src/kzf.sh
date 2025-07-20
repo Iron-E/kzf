@@ -144,15 +144,21 @@ if [ -n "${flag["select-context"]-}" ]; then
 			"${kubectl_common_opts[@]}"
 	)"
 
-	context="$(\
+	set +e
+	context="$(
 		echo "$contexts" \
 		| fzf \
 			"${fzf_common_opts[@]}" \
 			"${fzf_kubectl_opts[@]}" \
 			--accept-nth=2
-	)"
+	)";
 
-	flag["context"]="$context"
+	# shellcheck disable=SC2181
+	if [ $? = 0 ]; then
+		flag["context"]="$context"
+	fi
+
+	set -e
 fi
 
 if [ -n "${flag["select-namespace"]-}" ]; then
