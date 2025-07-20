@@ -197,6 +197,7 @@ if [ -z "$kubectl_resource" ]; then
 	)"
 
 	kubectl_resource="$(echo "$api_resources" | fzf "${fzf_common_opts[@]}")"
+	set -- "$kubectl_resource" "${@:2}" # update positional args
 fi
 
 fzf_kubectl_resource="{1}"
@@ -278,8 +279,14 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" fzf \
 	" \
 	--bind="alt-n:become:\
 		$0 $(fmt_flags) \
-			--all-namespaces=false \
 			--select-context=false \
 			--select-namespace \
 			$* \
-	"
+	" \
+	--bind="alt-k:become:\
+		$0 $(fmt_flags) \
+			--select-context=false \
+			--select-namespace=false \
+			'' \
+			${*:2} \
+	" \
