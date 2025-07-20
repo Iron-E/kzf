@@ -227,8 +227,9 @@ kubectl_get=(
 	"${flag["all-namespaces"]}"
 )
 
+kubectl_object_kind="${kubectl_resource/all/}"
 kubectl_get_yaml=(
-	"$kubectl_cmd" "get" "${kubectl_resource} ${fzf_kubectl_resource}"
+	"$kubectl_cmd" "get" "$kubectl_object_kind" "$fzf_kubectl_resource"
 	"${kubectl_common_opts[@]}"
 	"--context=${flag["context"]}"
 	"--namespace=$fzf_kubectl_namespace"
@@ -236,7 +237,7 @@ kubectl_get_yaml=(
 )
 
 kubectl_logs=(
-	"$kubectl_cmd" "logs" "${kubectl_resource}/${fzf_kubectl_resource}"
+	"$kubectl_cmd" "logs" "${kubectl_object_kind:+${kubectl_object_kind}/}${fzf_kubectl_resource}"
 	"${kubectl_common_opts[@]}"
 	"--context=${flag["context"]}"
 	"--follow"
