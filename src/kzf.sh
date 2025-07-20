@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e -o pipefail
+set -e -u -o pipefail
 
 progname="$(basename "$0")"
 
@@ -58,11 +58,11 @@ for opt in "$@"; do
 done
 
 # handle case where there are no args
-if [ "$1" = "--" ]; then
+if [ "${1-}" = "--" ]; then
 	shift
 fi
 
-if [ -n "${flag["help"]}" ]; then
+if [ -n "${flag["help"]-}" ]; then
 	echo "Usage: $progname [<resource>] [flags]
 
 kubectl fuzzy finder
@@ -88,7 +88,7 @@ kubectl
 	exit
 fi
 
-kubectl_resource="$1"
+kubectl_resource="${1-}"
 
 watch_enabled=$(( "${flag["watch"]%[a-z]}" > 0 ))
 
@@ -140,7 +140,7 @@ fzf_kubectl_opts=(
 	--delimiter='\s+'
 )
 
-if [ -n "${flag["select-context"]}" ]; then
+if [ -n "${flag["select-context"]-}" ]; then
 	contexts="$(
 		"$kubectl_cmd" config get-contexts \
 			"${kubectl_common_opts[@]}"
@@ -157,13 +157,13 @@ if [ -n "${flag["select-context"]}" ]; then
 	flag["context"]="$context"
 fi
 
-if [ -n "${flag["select-namespace"]}" ]; then
+if [ -n "${flag["select-namespace"]-}" ]; then
 	unset 'flag["all-namespaces"]' 'flag["namespace"]'
 
 	namespaces="$(\
 		"$kubectl_cmd" get namespaces \
 			"${kubectl_common_opts[@]}" \
-			--context="${flag["context"]}"
+			--context="${flag["context"]-}"
 	)"
 
 	read -r -d '' namespaces <<-EOF || true # read returns 1 on EOF
@@ -190,8 +190,8 @@ if [ -z "$kubectl_resource" ]; then
 	api_resources="$(\
 		"$kubectl_cmd" api-resources \
 			"${kubectl_common_opts[@]}" \
-			--context="${flag["context"]}" \
-			--namespace="${flag["namespace"]}" \
+			--context="${flag["context"]-}" \
+			--namespace="${flag["namespace"]-}" \
 			--output name \
 			--no-headers
 	)"
@@ -201,38 +201,36 @@ if [ -z "$kubectl_resource" ]; then
 fi
 
 fzf_kubectl_resource="{1}"
-if [ -n "${flag["all-namespaces"]}" ]; then
+if [ -n "${flag["all-namespaces"]-}" ]; then
 	fzf_kubectl_resource="{2}"
 fi
 
-fzf_kubectl_namespace="${flag["namespace"]}"
-if [ -n "${flag["all-namespaces"]}" ]; then
+fzf_kubectl_namespace="${flag["namespace"]-}"
+if [ -n "${flag["all-namespaces"]-}" ]; then
 	fzf_kubectl_namespace="{1}"
 fi
 
+kubectl_object_kind="${kubectl_resource/all/}"
 kubectl_describe=(
-	"$kubectl_cmd" "describe" "$resource"
+	"$kubectl_cmd" "describe" "$kubectl_object_kind" "$fzf_kubectl_resource"
 	"${kubectl_common_opts[*]}"
-	"--context=${flag["context"]}"
+	"--context=${flag["context"]-}"
 	"--namespace=$fzf_kubectl_namespace"
-	"$kubectl_resource"
-	"$fzf_kubectl_resource"
 )
 
 kubectl_get=(
 	"$kubectl_cmd" "get" "$kubectl_resource"
 	"${kubectl_common_opts[@]}"
-	"--context=${flag["context"]}"
-	"--namespace=${flag["namespace"]}"
+	"--context=${flag["context"]-}"
+	"--namespace=${flag["namespace"]-}"
 	"--show-labels"
-	"${flag["all-namespaces"]}"
+	"${flag["all-namespaces"]-}"
 )
 
-kubectl_object_kind="${kubectl_resource/all/}"
 kubectl_get_yaml=(
 	"$kubectl_cmd" "get" "$kubectl_object_kind" "$fzf_kubectl_resource"
 	"${kubectl_common_opts[@]}"
-	"--context=${flag["context"]}"
+	"--context=${flag["context"]-}"
 	"--namespace=$fzf_kubectl_namespace"
 	"--output=yaml"
 )
@@ -240,7 +238,7 @@ kubectl_get_yaml=(
 kubectl_logs=(
 	"$kubectl_cmd" "logs" "${kubectl_object_kind:+${kubectl_object_kind}/}${fzf_kubectl_resource}"
 	"${kubectl_common_opts[@]}"
-	"--context=${flag["context"]}"
+	"--context=${flag["context"]-}"
 	"--follow"
 	"--namespace=$fzf_kubectl_namespace"
 )

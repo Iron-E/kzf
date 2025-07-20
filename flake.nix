@@ -109,11 +109,6 @@
 
             runtimeInputs = mkDeps pkgs;
 
-            bashOptions = [
-              "errexit"
-              "pipefail"
-            ];
-
             text = lib.pipe ./src/kzf.sh [
               builtins.readFile
               (lib.splitString "\n")
