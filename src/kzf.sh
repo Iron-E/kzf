@@ -8,7 +8,7 @@ eval set -- "$(\
 	getopt \
 		-n "$progname" \
 		-o 'hA::c:n:w:' \
-		-l 'help,all-namespaces::,context:,namespace:,query:,tail:,watch:' \
+		-l 'help,all-namespaces::,context:,namespace:,query:,select-namespace::,tail:,watch:' \
 		-- \
 		"$@" \
 )"
@@ -17,6 +17,16 @@ declare -A flag=(
 	['watch']='4s'
 	['tail']='-1'
 )
+
+function fmt_flags {
+	for key in "${!flag[@]}"; do
+		value="${flag["$key"]}"
+		case "$value" in
+			"--$key") echo -n " $value" ;; # is a boolean flag
+			*) echo -n " --${key}=${value}" ;; # is not a boolean flag
+		esac
+	done
+}
 
 # args:
 #
@@ -39,6 +49,7 @@ for opt in "$@"; do
 		-h|--help)             flag["help"]="--help";                    shift 2 ;;
 		-n|--namespace)        flag["namespace"]="$2";                   shift 2 ;;
 		-q|--query)            flag["query"]="$2";                       shift 2 ;;
+		   --select-namespace) set_boolean_flag "select-namespace" "$2"; shift 2 ;;
 		-t|--tail)             flag["tail"]="$2";                        shift 2 ;;
 		-w|--watch)            flag["watch"]="$2";                       shift 2 ;;
 		--) break ;;
@@ -122,8 +133,8 @@ else
 	}
 fi
 
-fzf_common_opts=(\
-	"--ansi" \
+fzf_common_opts=(
+	"--ansi"
 	"--with-shell=bash -c"
 )
 
@@ -135,8 +146,8 @@ if hash kubecolor 2>/dev/null; then
 	kubectl_common_opts+=("--force-colors")
 fi
 
-if [ -n "${flag["select_namespace"]}" ]; then
-	echo "Unimplemented!" >/dev/stderr
+if [ -n "${flag["select-namespace"]}" ]; then
+	echo "Unimplemented!"
 	exit
 fi
 
@@ -213,4 +224,5 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" fzf \
 	--preview-window="30%,hidden" \
 	--bind="alt-i:execute:$(kzf_live_pager "${kubectl_describe[*]}")" \
 	--bind="alt-l:execute:$(kzf_log_pager "${kubectl_logs[@]}")" \
+	--bind="alt-n:become:$0 $(fmt_flags) --select-namespace $*" \
 	--bind="alt-y:execute:${kubectl_get_yaml[*]} | $PAGER"
