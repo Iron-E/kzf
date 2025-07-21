@@ -19,7 +19,14 @@ declare -A flag=(
 )
 
 function fmt_flags {
+	ignored_prefix="${1-}"
 	for key in "${!flag[@]}"; do
+		# if removing the ignored prefix from a key makes it different than what
+		# the key originally was, skip it
+		if [ "${key}" != "${key#"$ignored_prefix"}" ]; then
+			continue
+		fi
+
 		value="${flag["$key"]}"
 		case "$value" in
 			"--$key") echo -n " $value" ;; # is a boolean flag
@@ -284,25 +291,21 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" fzf \
 	--bind="alt-l:execute:$(kzf_log_pager "${kubectl_logs[@]}")" \
 	--bind="alt-y:execute:${kubectl_get_yaml[*]} | $PAGER" \
 	--bind="alt-c:become:\
-		$0 $(fmt_flags) \
+		$0 $(fmt_flags select) \
 			--select-context \
-			--select-namespace=false \
 			${*:1:1} \
 			{q} \
 			${*:3} \
 	" \
 	--bind="alt-n:become:\
-		$0 $(fmt_flags) \
-			--select-context=false \
+		$0 $(fmt_flags select) \
 			--select-namespace \
 			${*:1:1} \
 			{q} \
 			${*:3} \
 	" \
 	--bind="alt-k:become:\
-		$0 $(fmt_flags) \
-			--select-context=false \
-			--select-namespace=false \
+		$0 $(fmt_flags select) \
 			'' \
 			{q} \
 			${*:3} \
