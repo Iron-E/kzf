@@ -8,7 +8,7 @@ eval set -- "$(\
 	getopt \
 		-n "$progname" \
 		-o 'hA::c:n:w:' \
-		-l 'help,all-namespaces::,context:,namespace:,select-context::,select-namespace::,tail:,watch:' \
+		-l 'help,all-namespaces::,context:,namespace:,select-context::,select-namespace::,select-resource::,tail:,watch:' \
 		-- \
 		"$@" \
 )"
@@ -57,6 +57,7 @@ for opt in "$@"; do
 		-n|--namespace)        flag["namespace"]="$2";                   shift 2 ;;
 		   --select-context)   set_boolean_flag "select-context" "$2";   shift 2 ;;
 		   --select-namespace) set_boolean_flag "select-namespace" "$2"; shift 2 ;;
+		   --select-resource)  set_boolean_flag "select-resource" "$2";  shift 2 ;;
 		-t|--tail)             flag["tail"]="$2";                        shift 2 ;;
 		-w|--watch)            flag["watch"]="$2";                       shift 2 ;;
 		--) break ;;
@@ -76,6 +77,8 @@ Flags:
   -h, --help                Show context-sensitive help.
       --select-context      Fuzzy find the context to view resoruces in.
       --select-namespace    Fuzzy find the namespace to view resoruces in.
+      --select-resource     Fuzzy find the resource kind to view.
+                            This is the default when <resource> is not given.
   -w, --watch=DURATION      How often to refresh Kubernetes resources.
 
 kubectl
@@ -207,7 +210,7 @@ EOF
 	set -e
 fi
 
-if [ -z "${!kubectl_resource-}" ]; then
+function select_kubectl_resource {
 	api_resources=\
 "all
 $(\
@@ -220,8 +223,21 @@ $(\
 )"
 
 	api_resources="$(echo "$api_resources" | sort)"
+	echo "$api_resources" | fzf "${fzf_common_opts[@]}"
+}
 
-	positional_args[0]="$(echo "$api_resources" | fzf "${fzf_common_opts[@]}")"
+if [ -z "${!kubectl_resource-}" ]; then
+	positional_args[0]="$(select_kubectl_resource)"
+elif [ -n "${flag["select-resource"]-}" ]; then
+	set +e
+	new_kubectl_resource="$(select_kubectl_resource)";
+
+	# shellcheck disable=SC2181
+	if [ $? = 0 ]; then
+		positional_args[0]="$new_kubectl_resource"
+	fi
+
+	set -e
 fi
 
 fzf_kubectl_resource="{1}"
@@ -306,7 +322,6 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" fzf \
 	" \
 	--bind="alt-k:become:\
 		$0 $(fmt_flags select) \
-			'' \
-			{q} \
-			${*:3} \
+			--select-resource \
+			$(fmt_kzf_positional_args_for_fzf)
 	" \
