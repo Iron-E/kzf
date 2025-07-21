@@ -63,11 +63,6 @@ for opt in "$@"; do
 	esac
 done
 
-# handle case where there are no args
-if [ "${1-}" = "--" ]; then
-	shift
-fi
-
 if [ -n "${flag["help"]-}" ]; then
 	echo "Usage: $progname [flags] [<resource> [<query>]]
 
@@ -92,8 +87,18 @@ kubectl
 	exit
 fi
 
-kubectl_resource="${1-}"
-fzf_query="${2-}"
+# handle case where there are no args
+if [ "${1-}" = "--" ]; then
+	shift
+fi
+
+positional_args=("$@")
+kubectl_resource='positional_args[0]'
+fzf_query='positional_args[1]'
+
+function fmt_kzf_positional_args_for_fzf {
+	echo "${positional_args[*]:0:1} {q} ${positional_args[*]:2}"
+}
 
 watch_enabled=$(( "${flag["watch"]%[a-z]}" > 0 ))
 
@@ -104,11 +109,11 @@ if command -v viddy &>/dev/null; then
 	fi
 
 	function kzf_live_pager {
-		echo "viddy ${viddy_opts[*]} $*"
+		echo "viddy ${viddy_opts[*]} ${positional_args[*]}"
 	}
 else
 	function kzf_live_pager {
-		echo "$* | $PAGER"
+		echo "${positional_args[*]} | $PAGER"
 	}
 fi
 
@@ -123,7 +128,7 @@ if command -v tspin &>/dev/null; then
 	}
 else
 	function kzf_log_pager {
-		echo "$*"
+		echo "${positional_args[*]}"
 	}
 fi
 
@@ -202,7 +207,7 @@ EOF
 	set -e
 fi
 
-if [ -z "$kubectl_resource" ]; then
+if [ -z "${!kubectl_resource-}" ]; then
 	api_resources=\
 "all
 $(\
@@ -216,8 +221,7 @@ $(\
 
 	api_resources="$(echo "$api_resources" | sort)"
 
-	kubectl_resource="$(echo "$api_resources" | fzf "${fzf_common_opts[@]}")"
-	set -- "$kubectl_resource" "${@:2}" # update positional args
+	positional_args[0]="$(echo "$api_resources" | fzf "${fzf_common_opts[@]}")"
 fi
 
 fzf_kubectl_resource="{1}"
@@ -230,7 +234,7 @@ if [ -n "${flag["all-namespaces"]-}" ]; then
 	fzf_kubectl_namespace="{1}"
 fi
 
-kubectl_object_kind="${kubectl_resource/all/}"
+kubectl_object_kind="${!kubectl_resource/all/}"
 kubectl_describe=(
 	"$kubectl_cmd" "describe" "$kubectl_object_kind" "$fzf_kubectl_resource"
 	"${kubectl_common_opts[*]}"
@@ -239,7 +243,7 @@ kubectl_describe=(
 )
 
 kubectl_get=(
-	"$kubectl_cmd" "get" "$kubectl_resource"
+	"$kubectl_cmd" "get" "${!kubectl_resource}"
 	"${kubectl_common_opts[@]}"
 	"--context=${flag["context"]-}"
 	"--namespace=${flag["namespace"]-}"
@@ -280,7 +284,7 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" fzf \
 	"${fzf_common_opts[@]}" \
 	"${fzf_kubectl_opts[@]}" \
 	"${fzf_watch_opts[@]}" \
-	--query="$fzf_query" \
+	--query="${!fzf_query-}" \
 	--accept-nth="$fzf_kubectl_resource" \
 	--bind="ctrl-r:+refresh-preview+reload:${kubectl_get[*]}" \
 	--bind='f1:change-preview-window(right,30%|hidden)' \
@@ -293,16 +297,12 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" fzf \
 	--bind="alt-c:become:\
 		$0 $(fmt_flags select) \
 			--select-context \
-			${*:1:1} \
-			{q} \
-			${*:3} \
+			$(fmt_kzf_positional_args_for_fzf)
 	" \
 	--bind="alt-n:become:\
 		$0 $(fmt_flags select) \
 			--select-namespace \
-			${*:1:1} \
-			{q} \
-			${*:3} \
+			$(fmt_kzf_positional_args_for_fzf)
 	" \
 	--bind="alt-k:become:\
 		$0 $(fmt_flags select) \
