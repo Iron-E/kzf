@@ -165,6 +165,7 @@ if [ -n "${flag["select-context"]-}" ]; then
 		| fzf \
 			"${fzf_common_opts[@]}" \
 			"${fzf_kubectl_opts[@]}" \
+			--prompt 'Context> ' \
 			--accept-nth=2
 	)";
 
@@ -195,6 +196,7 @@ EOF
 		| fzf \
 			"${fzf_common_opts[@]}" \
 			"${fzf_kubectl_opts[@]}" \
+			--prompt 'Namespace> ' \
 			--accept-nth=1
 	)"
 
@@ -223,7 +225,7 @@ $(\
 )"
 
 	api_resources="$(echo "$api_resources" | sort)"
-	echo "$api_resources" | fzf "${fzf_common_opts[@]}"
+	echo "$api_resources" | fzf "${fzf_common_opts[@]}" --prompt "Kind> "
 }
 
 if [ -z "${!kubectl_resource-}" ]; then
@@ -300,6 +302,7 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	"${fzf_common_opts[@]}" \
 	"${fzf_kubectl_opts[@]}" \
 	"${fzf_watch_opts[@]}" \
+	--prompt "${!kubectl_resource}> " \
 	--query="${!fzf_query-}" \
 	--accept-nth="$fzf_kubectl_resource" \
 	--bind="ctrl-r:+refresh-preview+reload:${kubectl_get[*]}" \
