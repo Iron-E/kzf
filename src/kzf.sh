@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -e -u -o pipefail
+shopt -s extglob
 
 progname="$(basename "$0")"
 
@@ -212,20 +213,44 @@ EOF
 	set -e
 fi
 
-function select_kubectl_resource {
-	api_resources=\
-"all
-$(\
+function kubectl_api_resources {
+	set -e -u -o pipefail
+
 	"$kubectl_cmd" api-resources \
-		"${kubectl_common_opts[@]}" \
 		--context="${flag["context"]-}" \
 		--namespace="${flag["namespace"]-}" \
-		--output name \
-		--no-headers
-)"
+		--cached \
+		"${@}"
+}
 
-	api_resources="$(echo "$api_resources" | sort)"
-	echo "$api_resources" | fzf "${fzf_common_opts[@]}" --prompt "Kind> "
+function select_kubectl_resource {
+	set -e -u -o pipefail
+
+	local api_resources
+	api_resources="$(kubectl_api_resources "${kubectl_common_opts[@]}")"
+
+	local api_resources_header
+	api_resources_header="$(echo "$api_resources" | head -n1)"
+
+	local api_resources_body
+	api_resources_body="$(echo "$api_resources" | tail -n +2)"
+	api_resources_body="$(printf "all\n%s" "$api_resources_body" | sort)"
+
+	local selected
+	selected="$(\
+		printf "%s\n%s" "$api_resources_header" "$api_resources_body" \
+		| fzf \
+			"${fzf_common_opts[@]}" \
+			"${fzf_kubectl_opts[@]}" \
+			--accept-nth='{1},{-3}' \
+			--prompt="Kind> " \
+	)"
+
+	local name="${selected%,*}" # cronjobs,batch/v1 -> cronjobs
+	local group="${selected#*,}" # cronjobs,batch/v1 -> batch/v1
+	group="${group%%?(/)v*}" # batch/v1 -> batch (see https://www.gnu.org/software/bash/manual/html_node/Pattern-Matching.html)
+
+	echo "${name}${group:+.$group}"
 }
 
 if [ -z "${!kubectl_resource-}" ]; then

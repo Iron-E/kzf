@@ -109,10 +109,13 @@
 
             runtimeInputs = mkDeps pkgs;
 
+            # handled by the script
+            bashOptions = [ ];
+
             text = lib.pipe ./src/kzf.sh [
               builtins.readFile
               (lib.splitString "\n")
-              (lib.drop 3)
+              (lib.drop 1)
               lib.concatLines
             ];
           };
