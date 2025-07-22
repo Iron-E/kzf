@@ -323,11 +323,29 @@ if [ "$watch_enabled" -eq 1 ]; then
 	)
 fi
 
+case "${!kubectl_resource}" in
+	*.*)
+		kubectl_resource_name="${!kubectl_resource%.*}"
+		kubectl_resource_group="${!kubectl_resource#*.}"
+		;;
+	*)
+		kubectl_resource_name="${!kubectl_resource}"
+		kubectl_resource_group=
+		;;
+esac
+
+kubectl_resource_kind="$(\
+	kubectl_api_resources --api-group="${kubectl_resource_group}" \
+	| grep -w "${kubectl_resource_name}" || echo "All" \
+)"
+
+kubectl_resource_kind="${kubectl_resource_kind##* }"
+
 FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	"${fzf_common_opts[@]}" \
 	"${fzf_kubectl_opts[@]}" \
 	"${fzf_watch_opts[@]}" \
-	--prompt "${!kubectl_resource}> " \
+	--prompt "${kubectl_resource_kind}> " \
 	--query="${!fzf_query-}" \
 	--accept-nth="$fzf_kubectl_resource" \
 	--bind="ctrl-r:+refresh-preview+reload:${kubectl_get[*]}" \
