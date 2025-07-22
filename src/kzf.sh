@@ -296,7 +296,7 @@ if [ "$watch_enabled" -eq 1 ]; then
 	)
 fi
 
-FZF_DEFAULT_COMMAND="${kubectl_get[*]}" fzf \
+FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	"${fzf_common_opts[@]}" \
 	"${fzf_kubectl_opts[@]}" \
 	"${fzf_watch_opts[@]}" \
