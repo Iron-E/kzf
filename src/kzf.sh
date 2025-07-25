@@ -278,6 +278,16 @@ if [ -n "${flag["all-namespaces"]-}" ]; then
 fi
 
 kubectl_object_kind="${!kubectl_resource/all/}"
+kubectl_delete=(
+	"$kubectl_cmd" "delete" "$kubectl_object_kind" "$fzf_kubectl_resource"
+	# SEE: https://github.com/kubecolor/kubecolor/issues/201#issuecomment-2508919907
+	"${kubectl_common_opts[*]/--force-colors/--plain}"
+	"--context=${flag["context"]-}"
+	"--namespace=$fzf_kubectl_namespace"
+	"--interactive=true" # prompt user
+	"--wait=false" # delete asynchronously
+)
+
 kubectl_describe=(
 	"$kubectl_cmd" "describe" "$kubectl_object_kind" "$fzf_kubectl_resource"
 	"${kubectl_common_opts[*]}"
@@ -353,6 +363,7 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	--preview="echo 'test'" \
 	--preview-label="Help" \
 	--preview-window="30%,hidden" \
+	--bind="alt-d:execute:${kubectl_delete[*]}" \
 	--bind="alt-i:execute:$(kzf_live_pager "${kubectl_describe[*]}")" \
 	--bind="alt-l:execute:$(kzf_log_pager "${kubectl_logs[@]}")" \
 	--bind="alt-y:execute:${kubectl_get_yaml[*]} | $PAGER" \
