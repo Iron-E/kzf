@@ -54,6 +54,7 @@ for opt in "$@"; do
 	case "$opt" in
 		-A|--all-namespaces)   set_boolean_flag "all-namespaces" "$2";   shift 2 ;;
 		-c|--context)          flag["context"]="$2";                     shift 2 ;;
+		   --debug)            set_boolean_flag "debug" "$2";            shift 2 ;;
 		-h|--help)             flag["help"]="--help";                    shift 2 ;;
 		-n|--namespace)        flag["namespace"]="$2";                   shift 2 ;;
 		   --select-context)   set_boolean_flag "select-context" "$2";   shift 2 ;;
@@ -75,6 +76,7 @@ Arguments:
   <query>       The initial fzf query.
 
 Flags:
+      --debug               Run in debug mode.
   -h, --help                Show context-sensitive help.
       --select-context      Fuzzy find the context to view resoruces in.
       --select-namespace    Fuzzy find the namespace to view resoruces in.
@@ -89,6 +91,10 @@ kubectl
       --tail=INTEGER        When showing logs, the number of lines to display."
 
 	exit
+fi
+
+if [ -n "${flag["debug"]-}" ]; then
+	trap 'echo exit due to error on line $LINENO' ERR
 fi
 
 # handle case where there are no args
