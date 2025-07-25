@@ -104,6 +104,10 @@ function fmt_kzf_positional_args_for_fzf {
 	echo "${positional_args[*]:0:1} {q} ${positional_args[*]:2}"
 }
 
+function fmt_flags_for_fzf {
+	echo "$(fmt_flags "$@")" "$(fmt_kzf_positional_args_for_fzf)"
+}
+
 watch_enabled=$(( "${flag["watch"]%[a-z]}" > 0 ))
 
 if command -v viddy &>/dev/null; then
@@ -316,8 +320,8 @@ kubectl_logs=(
 	"$kubectl_cmd" "logs" "${kubectl_object_kind:+${kubectl_object_kind}/}${fzf_kubectl_resource}"
 	"${kubectl_common_opts[@]}"
 	"--context=${flag["context"]-}"
-	"--follow"
 	"--namespace=$fzf_kubectl_namespace"
+	"--follow"
 )
 
 fzf_watch_opts=()
@@ -367,18 +371,6 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	--bind="alt-i:execute:$(kzf_live_pager "${kubectl_describe[*]}")" \
 	--bind="alt-l:execute:$(kzf_log_pager "${kubectl_logs[@]}")" \
 	--bind="alt-y:execute:${kubectl_get_yaml[*]} | $PAGER" \
-	--bind="alt-c:become:\
-		$0 $(fmt_flags select) \
-			--select-context \
-			$(fmt_kzf_positional_args_for_fzf)
-	" \
-	--bind="alt-n:become:\
-		$0 $(fmt_flags select) \
-			--select-namespace \
-			$(fmt_kzf_positional_args_for_fzf)
-	" \
-	--bind="alt-k:become:\
-		$0 $(fmt_flags select) \
-			--select-resource \
-			$(fmt_kzf_positional_args_for_fzf)
-	" \
+	--bind="alt-c:become:$0 $(fmt_flags_for_fzf select) --select-context" \
+	--bind="alt-n:become:$0 $(fmt_flags_for_fzf select) --select-namespace" \
+	--bind="alt-k:become:$0 $(fmt_flags_for_fzf select) --select-resource" \
