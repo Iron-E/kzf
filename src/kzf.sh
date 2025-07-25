@@ -330,6 +330,13 @@ kubectl_logs=(
 	"--follow"
 )
 
+kubectl_restart=(
+	"$kubectl_cmd" "rollout" "restart" "$kubectl_object_kind" "$fzf_kubectl_resource"
+	"${kubectl_common_opts[*]}"
+	"--context=${flag["context"]-}"
+	"--namespace=$fzf_kubectl_namespace"
+)
+
 fzf_watch_opts=()
 if [ "$watch_enabled" -eq 1 ]; then
 	fzf_watch_opts+=(
@@ -361,6 +368,8 @@ kubectl_resource_kind="$(\
 
 kubectl_resource_kind="${kubectl_resource_kind##* }"
 
+let_user_read_error='read -rp "press enter to continue "'
+
 FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	"${fzf_common_opts[@]}" \
 	"${fzf_kubectl_opts[@]}" \
@@ -376,6 +385,7 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	--bind="alt-d:execute:${kubectl_delete[*]}" \
 	--bind="alt-i:execute:$(kzf_live_pager "${kubectl_describe[*]}")" \
 	--bind="alt-l:execute:$(kzf_log_pager "${kubectl_logs[@]}")" \
+	--bind="alt-r:execute:${kubectl_restart[*]} || $let_user_read_error" \
 	--bind="alt-y:execute:${kubectl_get_yaml[*]} | $PAGER" \
 	--bind="alt-c:become:$0 $(fmt_flags_for_fzf select) --select-context" \
 	--bind="alt-n:become:$0 $(fmt_flags_for_fzf select) --select-namespace" \
