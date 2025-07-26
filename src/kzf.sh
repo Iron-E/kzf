@@ -9,7 +9,7 @@ eval set -- "$(\
 	getopt \
 		-n "$progname" \
 		-o 'hA::c:n:w:' \
-		-l 'help,all-namespaces::,context:,namespace:,select-context::,select-namespace::,select-resource::,tail:,watch:,zellij::' \
+		-l 'help,all-namespaces::,context:,mux:,namespace:,select-context::,select-namespace::,select-resource::,tail:,watch:,zellij' \
 		-- \
 		"$@" \
 )"
@@ -56,13 +56,14 @@ for opt in "$@"; do
 		-c|--context)          flag["context"]="$2";                     shift 2 ;;
 		   --debug)            set_boolean_flag "debug" "$2";            shift 2 ;;
 		-h|--help)             flag["help"]="--help";                    shift 2 ;;
+		   --mux)              flag["mux"]="$2";                         shift 2 ;;
 		-n|--namespace)        flag["namespace"]="$2";                   shift 2 ;;
 		   --select-context)   set_boolean_flag "select-context" "$2";   shift 2 ;;
 		   --select-namespace) set_boolean_flag "select-namespace" "$2"; shift 2 ;;
 		   --select-resource)  set_boolean_flag "select-resource" "$2";  shift 2 ;;
 		-t|--tail)             flag["tail"]="$2";                        shift 2 ;;
 		-w|--watch)            flag["watch"]="$2";                       shift 2 ;;
-		   --zellij)           set_boolean_flag "zellij" "$2";           shift 2 ;;
+		   --zellij)           flag["mux"]="zellij";                     shift 2 ;;
 		--) break ;;
 	esac
 done
@@ -79,6 +80,8 @@ Arguments:
 Flags:
       --debug               Run in debug mode.
   -h, --help                Show context-sensitive help.
+      --mux=STRING          Enable terminal multiplexer integration.
+                            Currently only supports 'zellij'.
       --select-context      Fuzzy find the context to view resoruces in.
       --select-namespace    Fuzzy find the namespace to view resoruces in.
       --select-resource     Fuzzy find the resource kind to view.
@@ -92,7 +95,7 @@ kubectl
       --tail=INTEGER        When showing logs, the number of lines to display.
 
 zellij
-      --zellij    Enable zellij integration."
+      --zellij    Short for --mux=zellij."
 
 	exit
 fi
