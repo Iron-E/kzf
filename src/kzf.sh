@@ -9,7 +9,7 @@ eval set -- "$(\
 	getopt \
 		-n "$progname" \
 		-o 'hA::c:n:w:' \
-		-l 'help,all-namespaces::,context:,mux:,namespace:,select-context::,select-namespace::,select-resource::,tail:,watch:,zellij' \
+		-l 'help,all-namespaces::,context:,mux:,namespace:,select-context::,select-namespace::,select-resource::,tail:,watch:,zj,zellij' \
 		-- \
 		"$@" \
 )"
@@ -63,7 +63,7 @@ for opt in "$@"; do
 		   --select-resource)  set_boolean_flag "select-resource" "$2";  shift 2 ;;
 		-t|--tail)             flag["tail"]="$2";                        shift 2 ;;
 		-w|--watch)            flag["watch"]="$2";                       shift 2 ;;
-		   --zellij)           flag["mux"]="zellij";                     shift 2 ;;
+		   --zj|--zellij)      flag["mux"]="zellij";                     shift 2 ;;
 		--) break ;;
 	esac
 done
@@ -81,7 +81,7 @@ Flags:
       --debug               Run in debug mode.
   -h, --help                Show context-sensitive help.
       --mux=STRING          Enable terminal multiplexer integration.
-                            Currently only supports 'zellij'.
+                            One of: zj|zellij
       --select-context      Fuzzy find the context to view resoruces in.
       --select-namespace    Fuzzy find the namespace to view resoruces in.
       --select-resource     Fuzzy find the resource kind to view.
