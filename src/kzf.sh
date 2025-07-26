@@ -153,10 +153,26 @@ else
 	}
 fi
 
+function with_mux {
+	echo "execute:$*"
+}
+
+case "${flag["mux"]-}" in
+	zj|zellij)
+		if command -v zellij &>/dev/null; then
+			function with_mux {
+				echo "execute-silent:zellij run --close-on-exit -- bash -c '$*'"
+			}
+		else
+			echo "$0: --zellij option given, but zellij waas not found in the \$PATH" >/dev/stderr
+		fi
+		;;
+esac
+
 declare -a kubectl_common_opts
 kubectl_cmd=kubectl
 
-if hash kubecolor 2>/dev/null; then
+if command -v kubecolor &>/dev/null; then
 	kubectl_cmd=kubecolor
 	kubectl_common_opts+=("--force-colors")
 fi
@@ -389,11 +405,11 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	--preview="echo 'test'" \
 	--preview-label="Help" \
 	--preview-window="30%,hidden" \
-	--bind="alt-d:execute:${kubectl_delete[*]}" \
-	--bind="alt-i:execute:$(kzf_live_pager "${kubectl_describe[*]}")" \
-	--bind="alt-l:execute:$(kzf_log_pager "${kubectl_logs[@]}")" \
-	--bind="alt-r:execute:${kubectl_restart[*]} || $let_user_read_error" \
-	--bind="alt-y:execute:${kubectl_get_yaml[*]} | $PAGER" \
+	--bind="alt-d:$(with_mux "${kubectl_delete[*]}")" \
+	--bind="alt-i:$(with_mux "$(kzf_live_pager "${kubectl_describe[*]}")")" \
+	--bind="alt-l:$(with_mux "$(kzf_log_pager "${kubectl_logs[@]}")")" \
+	--bind="alt-r:$(with_mux "${kubectl_restart[*]} || $let_user_read_error")" \
+	--bind="alt-y:$(with_mux "${kubectl_get_yaml[*]} | $PAGER")" \
 	--bind="alt-c:become:$0 $(fmt_flags_for_fzf select) --select-context" \
 	--bind="alt-n:become:$0 $(fmt_flags_for_fzf select) --select-namespace" \
 	--bind="alt-k:become:$0 $(fmt_flags_for_fzf select) --select-resource" \
