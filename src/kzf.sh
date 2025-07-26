@@ -9,7 +9,7 @@ eval set -- "$(\
 	getopt \
 		-n "$progname" \
 		-o 'hA::c:n:w:' \
-		-l 'help,all-namespaces::,context:,namespace:,select-context::,select-namespace::,select-resource::,tail:,watch:' \
+		-l 'help,all-namespaces::,context:,namespace:,select-context::,select-namespace::,select-resource::,tail:,watch:,zellij::' \
 		-- \
 		"$@" \
 )"
@@ -62,6 +62,7 @@ for opt in "$@"; do
 		   --select-resource)  set_boolean_flag "select-resource" "$2";  shift 2 ;;
 		-t|--tail)             flag["tail"]="$2";                        shift 2 ;;
 		-w|--watch)            flag["watch"]="$2";                       shift 2 ;;
+		   --zellij)           set_boolean_flag "zellij" "$2";           shift 2 ;;
 		--) break ;;
 	esac
 done
@@ -88,7 +89,10 @@ kubectl
   -A, --all-namespaces      Show resources from every namespace.
   -c, --context=STRING      The kubeconfig context to use.
   -n, --namespace=STRING    The namespace to fuzzy find in.
-      --tail=INTEGER        When showing logs, the number of lines to display."
+      --tail=INTEGER        When showing logs, the number of lines to display.
+
+zellij
+      --zellij    Enable zellij integration."
 
 	exit
 fi
