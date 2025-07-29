@@ -322,6 +322,13 @@ if [ -n "${flag["all-namespaces"]-}" ]; then
 fi
 
 kubectl_object_kind="${!kubectl_resource/all/}"
+kubectl_attach=(
+	"$kubectl_cmd" "attach" "${kubectl_object_kind:+${kubectl_object_kind}/}${fzf_kubectl_resource}"
+	"${kubectl_common_opts[*]}"
+	"--context=${flag["context"]-}"
+	"--namespace=$fzf_kubectl_namespace"
+)
+
 kubectl_delete=(
 	"$kubectl_cmd" "delete" "$kubectl_object_kind" "$fzf_kubectl_resource"
 	# SEE: https://github.com/kubecolor/kubecolor/issues/201#issuecomment-2508919907
@@ -418,6 +425,50 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 		fi
 	' \
 	--bind="ctrl-r:+reload-sync:${kubectl_get[*]}" \
+	--bind="alt-a:execute:${kubectl_attach[*]}" \
+	--bind="alt-A:execute:
+		case \"$kubectl_object_kind\" in
+			deploy|deployments.apps\
+			|rs|replicasets.apps\
+			|jobs.batch)
+				jsonpath='{.spec.template.spec.containers[*].name}'
+				;;
+			cj|cronjobs.batch)
+				jsonpath='{.spec.jobTemplate.spec.template.spec.containers[*].name}'
+				;;
+			pods)
+				jsonpath='{.spec.containers[*].name}'
+				;;
+			*)
+				echo unsupported kind: $kubectl_resource_kind
+				$let_user_read_error
+				;;
+		esac
+
+		containers=\"\$(\
+			${kubectl_get_yaml[*]/--output=yaml/} \
+				--output jsonpath=\"\$jsonpath\" \
+		)\"
+
+		if [ -z \"\$containers\" ]; then
+			echo $kubectl_object_kind $fzf_kubectl_resource has no containers
+			$let_user_read_error
+			exit
+		fi
+
+		selected=\"\$(\
+			echo \"\$containers\" \
+			| fzf \
+				${fzf_common_opts[*]@Q} \
+				--prompt 'Selcct Container> ' \
+				--info-command='$(fzf_info_command)' \
+				--select-1 \
+		)\"
+
+		if [ \$? = 0 ]; then
+			${kubectl_attach[*]} -it --container=\"\$selected\"
+		fi
+	" \
 	--bind="alt-d:$(with_mux "${kubectl_delete[*]}")" \
 	--bind="alt-i:$(with_mux "$(kzf_live_pager "${kubectl_describe[*]}")")" \
 	--bind="alt-l:$(with_mux "$(kzf_log_pager "${kubectl_logs[@]}")")" \
