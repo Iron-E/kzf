@@ -4,7 +4,10 @@
 
 <details><summary>Preview</summary>
 
-TODO: add screenshots/gifs
+<img width="1887" height="471" alt="cap" src="https://github.com/user-attachments/assets/2c4de5e8-6b59-4db1-a6d5-6038048945e1" />
+
+TODO: add gif
+
 
 </details>
 
