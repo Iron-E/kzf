@@ -482,6 +482,8 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	--bind='f1:change-preview-window(right,30%|hidden)' \
 	--preview-label="Help" \
 	--preview="cat <<-EOF
+		alt-a    attach to default container
+		alt-A    select and attach to container
 		alt-c    change active context
 		alt-d    delete resource (with confirmation)
 		alt-i    describe resource (mnemonic: inspect)
