@@ -425,11 +425,36 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 		fi
 	' \
 	--bind="ctrl-r:+reload-sync:${kubectl_get[*]}" \
-	--bind="alt-a:execute:
+	--bind="alt-a:execute:${kubectl_attach[*]}" \
+	--bind="alt-A:execute:
+		case \"$kubectl_object_kind\" in
+			deploy|deployments.apps\
+			|rs|replicasets.apps\
+			|jobs.batch)
+				jsonpath='{.spec.template.spec.containers[*].name}'
+				;;
+			cj|cronjobs.batch)
+				jsonpath='{.spec.jobTemplate.spec.template.spec.containers[*].name}'
+				;;
+			pods)
+				jsonpath='{.spec.containers[*].name}'
+				;;
+			*)
+				echo unsupported kind: $kubectl_resource_kind
+				$let_user_read_error
+				;;
+		esac
+
 		containers=\"\$(\
 			${kubectl_get_yaml[*]/--output=yaml/} \
-				--output jsonpath='{.spec.containers[*].name}' \
+				--output jsonpath=\"\$jsonpath\" \
 		)\"
+
+		if [ -z \"\$containers\" ]; then
+			echo $kubectl_object_kind $fzf_kubectl_resource has no containers
+			$let_user_read_error
+			exit
+		fi
 
 		selected=\"\$(\
 			echo \"\$containers\" \
