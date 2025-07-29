@@ -130,11 +130,11 @@ if command -v viddy &>/dev/null; then
 	fi
 
 	function kzf_live_pager {
-		echo "viddy ${viddy_opts[*]} ${positional_args[*]}"
+		echo "viddy ${viddy_opts[*]} $*"
 	}
 else
 	function kzf_live_pager {
-		echo "${positional_args[*]} | $PAGER"
+		echo "$* | $PAGER"
 	}
 fi
 
