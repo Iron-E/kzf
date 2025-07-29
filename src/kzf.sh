@@ -322,6 +322,13 @@ if [ -n "${flag["all-namespaces"]-}" ]; then
 fi
 
 kubectl_object_kind="${!kubectl_resource/all/}"
+kubectl_attach=(
+	"$kubectl_cmd" "attach" "${kubectl_object_kind:+${kubectl_object_kind}/}${fzf_kubectl_resource}"
+	"${kubectl_common_opts[*]}"
+	"--context=${flag["context"]-}"
+	"--namespace=$fzf_kubectl_namespace"
+)
+
 kubectl_delete=(
 	"$kubectl_cmd" "delete" "$kubectl_object_kind" "$fzf_kubectl_resource"
 	# SEE: https://github.com/kubecolor/kubecolor/issues/201#issuecomment-2508919907
@@ -418,6 +425,25 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 		fi
 	' \
 	--bind="ctrl-r:+reload-sync:${kubectl_get[*]}" \
+	--bind="alt-a:execute:
+		containers=\"\$(\
+			${kubectl_get_yaml[*]/--output=yaml/} \
+				--output jsonpath='{.spec.containers[*].name}' \
+		)\"
+
+		selected=\"\$(\
+			echo \"\$containers\" \
+			| fzf \
+				${fzf_common_opts[*]@Q} \
+				--prompt 'Selcct Container> ' \
+				--info-command='$(fzf_info_command)' \
+				--select-1 \
+		)\"
+
+		if [ \$? = 0 ]; then
+			${kubectl_attach[*]} -it --container=\"\$selected\"
+		fi
+	" \
 	--bind="alt-d:$(with_mux "${kubectl_delete[*]}")" \
 	--bind="alt-i:$(with_mux "$(kzf_live_pager "${kubectl_describe[*]}")")" \
 	--bind="alt-l:$(with_mux "$(kzf_log_pager "${kubectl_logs[@]}")")" \
