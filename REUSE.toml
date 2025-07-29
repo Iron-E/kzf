@@ -1,0 +1,9 @@
+version = 1
+
+# See https://reuse.software/faq/#bulk-license (and https://reuse.software/spec-3.3/)
+
+# default license
+[[annotations]]
+SPDX-License-Identifier = "MPL-2.0"
+SPDX-FileCopyrightText = "2025 Iron-E <code.iron.e@gmail.com>"
+path = "**/*"

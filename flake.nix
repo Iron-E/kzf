@@ -50,6 +50,7 @@
       mkDevDeps =
         pkgs: with pkgs; [
           bashInteractive
+          reuse
         ];
     in
     {
