@@ -402,6 +402,7 @@ kubectl_resource_kind="${kubectl_resource_kind##* }"
 
 let_user_read_error='read -rp "press enter to continue "'
 
+# shellcheck disable=SC2016
 FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	"${fzf_common_opts[@]}" \
 	"${fzf_kubectl_opts[@]}" \
@@ -410,6 +411,12 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	--info-command="$(fzf_info_command)" \
 	--query="${!fzf_query-}" \
 	--accept-nth="$fzf_kubectl_resource" \
+	--bind='change:transform-search:
+		echo -n {q}
+		if [ "$FZF_PROMPT" = "All> " ] && [ -n {q} ]; then
+			echo -n " !LABELS"
+		fi
+	' \
 	--bind="ctrl-r:+refresh-preview+reload:${kubectl_get[*]}" \
 	--bind="alt-d:$(with_mux "${kubectl_delete[*]}")" \
 	--bind="alt-i:$(with_mux "$(kzf_live_pager "${kubectl_describe[*]}")")" \
