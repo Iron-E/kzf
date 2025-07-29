@@ -145,11 +145,11 @@ if command -v tspin &>/dev/null; then
 	esac
 
 	function kzf_log_pager {
-		echo tspin "$tspin_opt" "\"${kubectl_logs[*]}\""
+		echo tspin "$tspin_opt" "\"$*\""
 	}
 else
 	function kzf_log_pager {
-		echo "${positional_args[*]}"
+		echo "$@"
 	}
 fi
 
