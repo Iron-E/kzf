@@ -378,7 +378,7 @@ if [ "$watch_enabled" -eq 1 ]; then
 		"--bind=start:+bg-transform:
 			while true; do
 				sleep ${flag["watch"]@Q}
-				curl -X POST \"localhost:\$FZF_PORT\" -d 'reload:${kubectl_get[*]}' --silent
+				curl -X POST \"localhost:\$FZF_PORT\" -d 'reload-sync:${kubectl_get[*]}' --silent
 			done &
 		"
 	)
@@ -417,7 +417,7 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 			echo -n " !LABELS"
 		fi
 	' \
-	--bind="ctrl-r:+refresh-preview+reload:${kubectl_get[*]}" \
+	--bind="ctrl-r:+reload-sync:${kubectl_get[*]}" \
 	--bind="alt-d:$(with_mux "${kubectl_delete[*]}")" \
 	--bind="alt-i:$(with_mux "$(kzf_live_pager "${kubectl_describe[*]}")")" \
 	--bind="alt-l:$(with_mux "$(kzf_log_pager "${kubectl_logs[@]}")")" \
