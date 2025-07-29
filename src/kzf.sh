@@ -374,20 +374,18 @@ if [ "$watch_enabled" -eq 1 ]; then
 fi
 
 case "${!kubectl_resource}" in
+	all)
+		kubectl_resource_kind=All
+		;;
 	*.*)
 		kubectl_resource_name="${!kubectl_resource%.*}"
 		kubectl_resource_group="${!kubectl_resource#*.}"
+		kubectl_resource_kind="$(kubectl_api_resources --api-group="${kubectl_resource_group}" | grep -w "${kubectl_resource_name}")"
 		;;
 	*)
-		kubectl_resource_name="${!kubectl_resource}"
-		kubectl_resource_group=
+		kubectl_resource_kind="$(kubectl_api_resources | grep -w "${!kubectl_resource}")"
 		;;
 esac
-
-kubectl_resource_kind="$(\
-	kubectl_api_resources --api-group="${kubectl_resource_group}" \
-	| grep -w "${kubectl_resource_name}" || echo "All" \
-)"
 
 kubectl_resource_kind="${kubectl_resource_kind##* }"
 
