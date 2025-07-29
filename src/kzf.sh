@@ -187,6 +187,15 @@ fzf_kubectl_opts=(
 	--delimiter='\s+'
 )
 
+function fzf_info_command {
+	# shellcheck disable=SC2016
+	echo -n echo '"(${FZF_INFO})'
+	echo -n "${flag["context"]+ ctx:${flag["context"]}}"
+	echo -n "${flag["namespace"]+ ns:${flag["namespace"]}}"
+	echo -n "${flag["all-namespaces"]+ ns:*}"
+	echo -n '"'
+}
+
 if [ -n "${flag["select-context"]-}" ]; then
 	contexts="$(
 		"$kubectl_cmd" config get-contexts \
@@ -199,7 +208,7 @@ if [ -n "${flag["select-context"]-}" ]; then
 		| fzf \
 			"${fzf_common_opts[@]}" \
 			"${fzf_kubectl_opts[@]}" \
-			--prompt 'Context> ' \
+			--prompt 'Selcct Context> ' \
 			--accept-nth=2
 	)";
 
@@ -230,7 +239,8 @@ EOF
 		| fzf \
 			"${fzf_common_opts[@]}" \
 			"${fzf_kubectl_opts[@]}" \
-			--prompt 'Namespace> ' \
+			--prompt 'Select Namespace> ' \
+			--info-command="echo \"(\$FZF_INFO) ${flag["context"]+ ctx:${flag["context"]}}\"" \
 			--accept-nth=1
 	)"
 
@@ -276,7 +286,8 @@ function select_kubectl_resource {
 			"${fzf_common_opts[@]}" \
 			"${fzf_kubectl_opts[@]}" \
 			--accept-nth='{1},{-3}' \
-			--prompt="Kind> " \
+			--prompt="Select Kind> " \
+			--info-command="$(fzf_info_command)" \
 	)"
 
 	local name="${selected%,*}" # cronjobs,batch/v1 -> cronjobs
@@ -396,6 +407,7 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	"${fzf_kubectl_opts[@]}" \
 	"${fzf_watch_opts[@]}" \
 	--prompt "${kubectl_resource_kind}> " \
+	--info-command="$(fzf_info_command)" \
 	--query="${!fzf_query-}" \
 	--accept-nth="$fzf_kubectl_resource" \
 	--bind="ctrl-r:+refresh-preview+reload:${kubectl_get[*]}" \
