@@ -401,10 +401,6 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	--query="${!fzf_query-}" \
 	--accept-nth="$fzf_kubectl_resource" \
 	--bind="ctrl-r:+refresh-preview+reload:${kubectl_get[*]}" \
-	--bind='f1:change-preview-window(right,30%|hidden)' \
-	--preview="echo 'test'" \
-	--preview-label="Help" \
-	--preview-window="30%,hidden" \
 	--bind="alt-d:$(with_mux "${kubectl_delete[*]}")" \
 	--bind="alt-i:$(with_mux "$(kzf_live_pager "${kubectl_describe[*]}")")" \
 	--bind="alt-l:$(with_mux "$(kzf_log_pager "${kubectl_logs[@]}")")" \
@@ -413,3 +409,17 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	--bind="alt-c:become:$0 $(fmt_flags_for_fzf select) --select-context" \
 	--bind="alt-n:become:$0 $(fmt_flags_for_fzf select) --select-namespace" \
 	--bind="alt-k:become:$0 $(fmt_flags_for_fzf select) --select-resource" \
+	--ghost='Press F1 for help' \
+	--preview-window="hidden" \
+	--bind='f1:change-preview-window(right,30%|hidden)' \
+	--preview-label="Help" \
+	--preview="cat <<-EOF
+		alt-c    change active context
+		alt-d    delete resource (with confirmation)
+		alt-i    describe resource (mnemonic: inspect)
+		alt-k    change active resource kind
+		alt-l    show resource logs
+		alt-n    change active namespace
+		alt-r    restart resource
+		alt-y    show manifest (mnemonic: YAML)
+EOF" \
