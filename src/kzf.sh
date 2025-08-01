@@ -401,7 +401,21 @@ case "${!kubectl_resource}" in
 		kubectl_resource_kind="$(kubectl_api_resources --api-group="${kubectl_resource_group}" | grep -w "${kubectl_resource_name}")"
 		;;
 	*)
-		kubectl_resource_kind="$(kubectl_api_resources | grep -w "${!kubectl_resource}")"
+		# sample output of api-resources:
+		#
+		# ```
+		# NAME                                SHORTNAMES   APIVERSION                        NAMESPACED   KIND
+		# storageclasses                      sc           storage.k8s.io/v1                 false        StorageClass
+		# ```
+		#
+		# We want to match lines based on NAME, SHORTNAMES, or KIND.
+		# This is because valid user input could be one of:
+		#
+		# - storageclasses
+		# - storageclass
+		# - StorageClass
+		#
+		kubectl_resource_kind="$(kubectl_api_resources | grep -iE "(^|,|\s)${!kubectl_resource}(\s|,|$)")"
 		;;
 esac
 
