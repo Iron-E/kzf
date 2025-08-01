@@ -378,6 +378,43 @@ kubectl_restart=(
 	"--namespace=$fzf_kubectl_namespace"
 )
 
+let_user_read_error='read -rp "press enter to continue "'
+read -r -d '' kubectl_select_container <<-EOF || true
+	shopt -s extglob lastpipe
+	case "${kubectl_object_kind}" in
+		deploy?(ment?(s?(.apps)))|rs|replicaset?(s?(.apps))|job?(s?(.batch)))
+			jsonpath='{.spec.template.spec.containers[*].name}'
+			;;
+		cj|cronjob?(s?(.batch)))
+			jsonpath='{.spec.jobTemplate.spec.template.spec.containers[*].name}'
+			;;
+		po?(d?(s)))
+			jsonpath='{.spec.containers[*].name}'
+			;;
+		*)
+			echo unsupported kind: '(${!kubectl_resource})'
+			$let_user_read_error
+			;;
+	esac
+
+	containers=\$(\
+		${kubectl_get_yaml[*]/--output=yaml/} \
+			--output jsonpath="\${jsonpath}" \
+	)
+
+	if [ -z "\$containers" ]; then
+		echo $kubectl_object_kind $fzf_kubectl_resource has no containers
+		$let_user_read_error
+		exit
+	fi
+
+	echo "\${containers}" \
+	| fzf \
+		${fzf_common_opts[*]@Q} \
+		--prompt 'Selcct Container> ' \
+		--info-command='$(fzf_info_command)'
+EOF
+
 fzf_watch_opts=()
 if [ "$watch_enabled" -eq 1 ]; then
 	fzf_watch_opts+=(
@@ -401,6 +438,7 @@ case "${!kubectl_resource}" in
 		kubectl_resource_kind="$(kubectl_api_resources --api-group="${kubectl_resource_group}" | grep -w "${kubectl_resource_name}")"
 		;;
 	*)
+		# explanation of regex.
 		# sample output of api-resources:
 		#
 		# ```
@@ -421,8 +459,6 @@ esac
 
 kubectl_resource_kind="${kubectl_resource_kind##* }"
 
-let_user_read_error='read -rp "press enter to continue "'
-
 # shellcheck disable=SC2016
 FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	"${fzf_common_opts[@]}" \
@@ -441,47 +477,21 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	--bind="ctrl-r:+reload-sync:${kubectl_get[*]}" \
 	--bind="alt-a:execute:${kubectl_attach[*]}" \
 	--bind="alt-A:execute:
-		case \"$kubectl_object_kind\" in
-			deploy|deployments.apps\
-			|rs|replicasets.apps\
-			|jobs.batch)
-				jsonpath='{.spec.template.spec.containers[*].name}'
-				;;
-			cj|cronjobs.batch)
-				jsonpath='{.spec.jobTemplate.spec.template.spec.containers[*].name}'
-				;;
-			pods)
-				jsonpath='{.spec.containers[*].name}'
-				;;
-			*)
-				echo unsupported kind: $kubectl_resource_kind
-				$let_user_read_error
-				;;
+		${kubectl_select_container} \
+			--expect='alt-t' \
+			--preview='cat <<-EOF
+				enter     attach
+				alt-t     attach w/ tty
+			EOF' \
+		| readarray -t selected
+
+		declare -a extra_opts
+		case \"\${selected[0]}\" in
+			alt-t) extra_opts+=(\"-i\" \"-t\") ;;
+			*) ;;
 		esac
 
-		containers=\"\$(\
-			${kubectl_get_yaml[*]/--output=yaml/} \
-				--output jsonpath=\"\$jsonpath\" \
-		)\"
-
-		if [ -z \"\$containers\" ]; then
-			echo $kubectl_object_kind $fzf_kubectl_resource has no containers
-			$let_user_read_error
-			exit
-		fi
-
-		selected=\"\$(\
-			echo \"\$containers\" \
-			| fzf \
-				${fzf_common_opts[*]@Q} \
-				--prompt 'Selcct Container> ' \
-				--info-command='$(fzf_info_command)' \
-				--select-1 \
-		)\"
-
-		if [ \$? = 0 ]; then
-			${kubectl_attach[*]} -it --container=\"\$selected\"
-		fi
+		${kubectl_attach[*]@Q} \"\${extra_opts[@]}\" --container=\"\${selected[1]}\"
 	" \
 	--bind="alt-d:$(with_mux "${kubectl_delete[*]}")" \
 	--bind="alt-D:$(with_mux "${kubectl_delete[*]}" --now)" \
@@ -508,4 +518,4 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 		alt-n    change active namespace
 		alt-r    restart resource
 		alt-y    show manifest (mnemonic: YAML)
-EOF" \
+	EOF" \
