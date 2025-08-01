@@ -9,7 +9,7 @@ eval set -- "$(\
 	getopt \
 		-n "$progname" \
 		-o 'A::c:hn:w:' \
-		-l 'all-namespaces::,context:,help,mux:,namespace:,select-context::,select-namespace::,select-resource::,tail:,watch:,zellij,zj' \
+		-l 'all-namespaces::,context:,debug::,help,mux:,namespace:,select-context::,select-namespace::,select-resource::,tail:,watch:,zellij,zj' \
 		-- \
 		"$@" \
 )"
