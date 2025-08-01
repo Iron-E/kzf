@@ -470,6 +470,7 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 		fi
 	" \
 	--bind="alt-d:$(with_mux "${kubectl_delete[*]}")" \
+	--bind="alt-D:$(with_mux "${kubectl_delete[*]}" --now)" \
 	--bind="alt-i:$(with_mux "$(kzf_live_pager "${kubectl_describe[*]}")")" \
 	--bind="alt-l:$(with_mux "$(kzf_log_pager "${kubectl_logs[@]}")")" \
 	--bind="alt-r:$(with_mux "${kubectl_restart[*]} || $let_user_read_error")" \
@@ -486,6 +487,7 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 		alt-A    select and attach to container
 		alt-c    change active context
 		alt-d    delete resource (with confirmation)
+		alt-D    delete resource --now (with confirmation)
 		alt-i    describe resource (mnemonic: inspect)
 		alt-k    change active resource kind
 		alt-l    show resource logs
