@@ -396,7 +396,7 @@ case "${!kubectl_resource}" in
 		kubectl_resource_kind=All
 		;;
 	*.*)
-		kubectl_resource_name="${!kubectl_resource%.*}"
+		kubectl_resource_name="${!kubectl_resource%%.*}"
 		kubectl_resource_group="${!kubectl_resource#*.}"
 		kubectl_resource_kind="$(kubectl_api_resources --api-group="${kubectl_resource_group}" | grep -w "${kubectl_resource_name}")"
 		;;
