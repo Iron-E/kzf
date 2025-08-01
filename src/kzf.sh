@@ -8,8 +8,8 @@ progname="$(basename "$0")"
 eval set -- "$(\
 	getopt \
 		-n "$progname" \
-		-o 'hA::c:n:w:' \
-		-l 'help,all-namespaces::,context:,mux:,namespace:,select-context::,select-namespace::,select-resource::,tail:,watch:,zj,zellij' \
+		-o 'A::c:hn:w:' \
+		-l 'all-namespaces::,context:,help,mux:,namespace:,select-context::,select-namespace::,select-resource::,tail:,watch:,zellij,zj' \
 		-- \
 		"$@" \
 )"
