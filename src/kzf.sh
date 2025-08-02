@@ -154,14 +154,24 @@ else
 fi
 
 function with_mux {
-	echo "execute:$*"
+	cmd="$*"
+	if [ -z "$cmd" ]; then
+		read -r -d '' cmd || true
+	fi
+
+	echo "execute:$cmd"
 }
 
 case "${flag["mux"]-}" in
 	zj|zellij)
 		if command -v zellij &>/dev/null; then
 			function with_mux {
-				echo "execute-silent:zellij run --close-on-exit -- bash -c '$*'"
+				cmd="$*"
+				if [ -z "$cmd" ]; then
+					read -r -d '' cmd || true
+				fi
+
+				echo "execute-silent:zellij run --close-on-exit -- bash -c '$cmd'"
 			}
 		else
 			echo "$0: --zellij option given, but zellij waas not found in the \$PATH" >/dev/stderr
@@ -378,6 +388,44 @@ kubectl_restart=(
 	"--namespace=$fzf_kubectl_namespace"
 )
 
+let_user_read_error='read -rp "press enter to continue "'
+read -r -d '' kubectl_select_container <<-EOF || true
+	shopt -s extglob lastpipe
+	case "${kubectl_object_kind}" in
+		deploy?(ment?(s?(.apps)))|rs|replicaset?(s?(.apps))|job?(s?(.batch)))
+			jsonpath='{.spec.template.spec.containers[*].name}'
+			;;
+		cj|cronjob?(s?(.batch)))
+			jsonpath='{.spec.jobTemplate.spec.template.spec.containers[*].name}'
+			;;
+		po?(d?(s)))
+			jsonpath='{.spec.containers[*].name}'
+			;;
+		*)
+			echo unsupported kind: '(${!kubectl_resource})'
+			$let_user_read_error
+			;;
+	esac
+
+	containers=\$(\
+		${kubectl_get_yaml[*]/--output=yaml/} \
+			--output jsonpath="\${jsonpath}" \
+	)
+
+	if [ -z "\$containers" ]; then
+		echo $kubectl_object_kind $fzf_kubectl_resource has no containers
+		$let_user_read_error
+		exit
+	fi
+
+	echo "\${containers}" \
+	| fzf \
+		${fzf_common_opts[*]@Q} \
+		--prompt 'Selcct Container> ' \
+		--info-command='$(fzf_info_command)' \
+		--preview-window='right,30%'
+EOF
+
 fzf_watch_opts=()
 if [ "$watch_enabled" -eq 1 ]; then
 	fzf_watch_opts+=(
@@ -401,6 +449,7 @@ case "${!kubectl_resource}" in
 		kubectl_resource_kind="$(kubectl_api_resources --api-group="${kubectl_resource_group}" | grep -w "${kubectl_resource_name}")"
 		;;
 	*)
+		# explanation of regex.
 		# sample output of api-resources:
 		#
 		# ```
@@ -421,7 +470,8 @@ esac
 
 kubectl_resource_kind="${kubectl_resource_kind##* }"
 
-let_user_read_error='read -rp "press enter to continue "'
+export -f kzf_log_pager
+export tspin_opt
 
 # shellcheck disable=SC2016
 FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
@@ -439,54 +489,51 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 		fi
 	' \
 	--bind="ctrl-r:+reload-sync:${kubectl_get[*]}" \
-	--bind="alt-a:execute:${kubectl_attach[*]}" \
-	--bind="alt-A:execute:
-		case \"$kubectl_object_kind\" in
-			deploy|deployments.apps\
-			|rs|replicasets.apps\
-			|jobs.batch)
-				jsonpath='{.spec.template.spec.containers[*].name}'
-				;;
-			cj|cronjobs.batch)
-				jsonpath='{.spec.jobTemplate.spec.template.spec.containers[*].name}'
-				;;
-			pods)
-				jsonpath='{.spec.containers[*].name}'
-				;;
-			*)
-				echo unsupported kind: $kubectl_resource_kind
-				$let_user_read_error
-				;;
+	--bind="alt-a:$(with_mux "${kubectl_attach[*]}")" \
+	--bind="alt-A:$(cat <<-EOF | with_mux
+		${kubectl_select_container} \
+			--expect='alt-t' \
+			--preview='cat <<-EOP
+				enter     attach
+				alt-t     attach w/ tty
+			EOP' \
+		| readarray -t selected
+
+		declare -a extra_opts
+		case "\${selected[0]}" in
+			alt-t) extra_opts+=("-i" "-t") ;;
+			*) ;;
 		esac
 
-		containers=\"\$(\
-			${kubectl_get_yaml[*]/--output=yaml/} \
-				--output jsonpath=\"\$jsonpath\" \
-		)\"
-
-		if [ -z \"\$containers\" ]; then
-			echo $kubectl_object_kind $fzf_kubectl_resource has no containers
-			$let_user_read_error
-			exit
-		fi
-
-		selected=\"\$(\
-			echo \"\$containers\" \
-			| fzf \
-				${fzf_common_opts[*]@Q} \
-				--prompt 'Selcct Container> ' \
-				--info-command='$(fzf_info_command)' \
-				--select-1 \
-		)\"
-
-		if [ \$? = 0 ]; then
-			${kubectl_attach[*]} -it --container=\"\$selected\"
-		fi
-	" \
+		${kubectl_attach[*]@Q} "\${extra_opts[@]}" --container="\${selected[1]}"
+	EOF
+	)" \
 	--bind="alt-d:$(with_mux "${kubectl_delete[*]}")" \
 	--bind="alt-D:$(with_mux "${kubectl_delete[*]}" --now)" \
 	--bind="alt-i:$(with_mux "$(kzf_live_pager "${kubectl_describe[*]}")")" \
 	--bind="alt-l:$(with_mux "$(kzf_log_pager "${kubectl_logs[@]}")")" \
+	--bind="alt-L:$(cat <<-EOF | with_mux
+		${kubectl_select_container} \
+			--expect='alt-a,alt-c,alt-p' \
+			--preview='cat <<-EOP
+				enter        pick container
+				alt-p        pick container in all pods (e.g. for Deployment)
+				alt-c        pick all containers
+				alt-a        pick all containers in all pods (e.g. for Deployment)
+			EOP' \
+		| readarray -t selected
+
+		declare -a extra_opts
+		case "\${selected[0]}" in
+			alt-a) extra_opts+=("--all-containers" "--all-pods") ;;
+			alt-c) extra_opts+=("--all-containers") ;;
+			alt-p) extra_opts+=("--all-pods") ;;
+			*) extra_opts+=("--container=\${selected[1]}") ;;
+		esac
+
+		eval "\$(kzf_log_pager "${kubectl_logs[@]}" "\${extra_opts[@]}")"
+	EOF
+	)" \
 	--bind="alt-r:$(with_mux "${kubectl_restart[*]} || $let_user_read_error")" \
 	--bind="alt-y:$(with_mux "${kubectl_get_yaml[*]} | $PAGER")" \
 	--bind="alt-c:become:$0 $(fmt_flags_for_fzf select) --select-context" \
@@ -508,4 +555,4 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 		alt-n    change active namespace
 		alt-r    restart resource
 		alt-y    show manifest (mnemonic: YAML)
-EOF" \
+	EOF" \
