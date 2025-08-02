@@ -422,7 +422,8 @@ read -r -d '' kubectl_select_container <<-EOF || true
 	| fzf \
 		${fzf_common_opts[*]@Q} \
 		--prompt 'Selcct Container> ' \
-		--info-command='$(fzf_info_command)'
+		--info-command='$(fzf_info_command)' \
+		--preview-window='right,30%'
 EOF
 
 fzf_watch_opts=()
@@ -469,6 +470,9 @@ esac
 
 kubectl_resource_kind="${kubectl_resource_kind##* }"
 
+export -f kzf_log_pager
+export tspin_opt
+
 # shellcheck disable=SC2016
 FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	"${fzf_common_opts[@]}" \
@@ -508,6 +512,28 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	--bind="alt-D:$(with_mux "${kubectl_delete[*]}" --now)" \
 	--bind="alt-i:$(with_mux "$(kzf_live_pager "${kubectl_describe[*]}")")" \
 	--bind="alt-l:$(with_mux "$(kzf_log_pager "${kubectl_logs[@]}")")" \
+	--bind="alt-L:$(cat <<-EOF | with_mux
+		${kubectl_select_container} \
+			--expect='alt-a,alt-c,alt-p' \
+			--preview='cat <<-EOP
+				enter        pick container
+				alt-p        pick container in all pods (e.g. for Deployment)
+				alt-c        pick all containers
+				alt-a        pick all containers in all pods (e.g. for Deployment)
+			EOP' \
+		| readarray -t selected
+
+		declare -a extra_opts
+		case "\${selected[0]}" in
+			alt-a) extra_opts+=("--all-containers" "--all-pods") ;;
+			alt-c) extra_opts+=("--all-containers") ;;
+			alt-p) extra_opts+=("--all-pods") ;;
+			*) extra_opts+=("--container=\${selected[1]}") ;;
+		esac
+
+		eval "\$(kzf_log_pager "${kubectl_logs[@]}" "\${extra_opts[@]}")"
+	EOF
+	)" \
 	--bind="alt-r:$(with_mux "${kubectl_restart[*]} || $let_user_read_error")" \
 	--bind="alt-y:$(with_mux "${kubectl_get_yaml[*]} | $PAGER")" \
 	--bind="alt-c:become:$0 $(fmt_flags_for_fzf select) --select-context" \
