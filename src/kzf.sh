@@ -485,24 +485,25 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 		fi
 	' \
 	--bind="ctrl-r:+reload-sync:${kubectl_get[*]}" \
-	--bind="alt-a:execute:${kubectl_attach[*]}" \
-	--bind="alt-A:execute:
+	--bind="alt-a:$(with_mux "${kubectl_attach[*]}")" \
+	--bind="alt-A:$(cat <<-EOF | with_mux
 		${kubectl_select_container} \
 			--expect='alt-t' \
-			--preview='cat <<-EOF
+			--preview='cat <<-EOP
 				enter     attach
 				alt-t     attach w/ tty
-			EOF' \
+			EOP' \
 		| readarray -t selected
 
 		declare -a extra_opts
-		case \"\${selected[0]}\" in
-			alt-t) extra_opts+=(\"-i\" \"-t\") ;;
+		case "\${selected[0]}" in
+			alt-t) extra_opts+=("-i" "-t") ;;
 			*) ;;
 		esac
 
-		${kubectl_attach[*]@Q} \"\${extra_opts[@]}\" --container=\"\${selected[1]}\"
-	" \
+		${kubectl_attach[*]@Q} "\${extra_opts[@]}" --container="\${selected[1]}"
+	EOF
+	)" \
 	--bind="alt-d:$(with_mux "${kubectl_delete[*]}")" \
 	--bind="alt-D:$(with_mux "${kubectl_delete[*]}" --now)" \
 	--bind="alt-i:$(with_mux "$(kzf_live_pager "${kubectl_describe[*]}")")" \
