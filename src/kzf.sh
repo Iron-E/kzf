@@ -154,14 +154,24 @@ else
 fi
 
 function with_mux {
-	echo "execute:$*"
+	cmd="$*"
+	if [ -z "$cmd" ]; then
+		read -r -d '' cmd || true
+	fi
+
+	echo "execute:$cmd"
 }
 
 case "${flag["mux"]-}" in
 	zj|zellij)
 		if command -v zellij &>/dev/null; then
 			function with_mux {
-				echo "execute-silent:zellij run --close-on-exit -- bash -c '$*'"
+				cmd="$*"
+				if [ -z "$cmd" ]; then
+					read -r -d '' cmd || true
+				fi
+
+				echo "execute-silent:zellij run --close-on-exit -- bash -c '$cmd'"
 			}
 		else
 			echo "$0: --zellij option given, but zellij waas not found in the \$PATH" >/dev/stderr
