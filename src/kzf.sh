@@ -364,6 +364,8 @@ kubectl_exec=(
 	"-it"
 )
 
+read_kubectl_exec_cmd=("read" "-r" "-p" "Command> " "-e" "cmd")
+
 kubectl_get=(
 	"$kubectl_cmd" "get" "${!kubectl_resource}"
 	"${kubectl_common_opts[@]}"
@@ -543,6 +545,12 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	EOF
 	)" \
 	--bind="alt-r:$(with_mux "${kubectl_restart[*]} || $let_user_read_error")" \
+	--bind="alt-x:$(cat <<-EOF | with_mux
+		${read_kubectl_exec_cmd[*]@Q}
+		eval ${kubectl_exec[*]@Q} -it -- \$cmd \
+		|| $let_user_read_error
+	EOF
+	)" \
 	--bind="alt-X:$(cat <<-EOF | with_mux
 		${kubectl_select_container} \
 			--expect='alt-t' \
@@ -558,12 +566,12 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 			*) ;;
 		esac
 
-		read -r -p 'Command> ' -e cmd
-		eval ${kubectl_exec[*]} "\${extra_opts[@]}" --container="\${selected[1]}" -- \$cmd \
+		${read_kubectl_exec_cmd[*]@Q}
+		eval ${kubectl_exec[*]@Q} "\${extra_opts[@]}" --container="\${selected[1]}" -- \$cmd \
 		|| $let_user_read_error
 	EOF
 	)" \
-	--bind="alt-y:$(with_mux "${kubectl_get_yaml[*]} | $PAGER")" \
+	--bind="alt-y:$(with_mux "${kubectl_get_yaml[*]@Q} | $PAGER")" \
 	--bind="alt-c:become:$0 $(fmt_flags_for_fzf select) --select-context" \
 	--bind="alt-n:become:$0 $(fmt_flags_for_fzf select) --select-namespace" \
 	--bind="alt-k:become:$0 $(fmt_flags_for_fzf select) --select-resource" \
