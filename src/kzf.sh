@@ -356,6 +356,14 @@ kubectl_describe=(
 	"--namespace=$fzf_kubectl_namespace"
 )
 
+kubectl_exec=(
+	"$kubectl_cmd" "exec" "${kubectl_object_kind:+${kubectl_object_kind}/}${fzf_kubectl_resource}"
+	"${kubectl_common_opts[@]}"
+	"--context=${flag["context"]-}"
+	"--namespace=$fzf_kubectl_namespace"
+	"-it"
+)
+
 kubectl_get=(
 	"$kubectl_cmd" "get" "${!kubectl_resource}"
 	"${kubectl_common_opts[@]}"
@@ -535,6 +543,26 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	EOF
 	)" \
 	--bind="alt-r:$(with_mux "${kubectl_restart[*]} || $let_user_read_error")" \
+	--bind="alt-X:$(cat <<-EOF | with_mux
+		${kubectl_select_container} \
+			--expect='alt-t' \
+			--preview='cat <<-EOP
+				enter     attach
+				alt-t     attach w/ tty
+			EOP' \
+		| readarray -t selected
+
+		declare -a extra_opts
+		case "\${selected[0]}" in
+			alt-t) extra_opts+=("-i" "-t") ;;
+			*) ;;
+		esac
+
+		read -r -p 'Command> ' -e cmd
+		eval ${kubectl_exec[*]} "\${extra_opts[@]}" --container="\${selected[1]}" -- \$cmd \
+		|| $let_user_read_error
+	EOF
+	)" \
 	--bind="alt-y:$(with_mux "${kubectl_get_yaml[*]} | $PAGER")" \
 	--bind="alt-c:become:$0 $(fmt_flags_for_fzf select) --select-context" \
 	--bind="alt-n:become:$0 $(fmt_flags_for_fzf select) --select-namespace" \
