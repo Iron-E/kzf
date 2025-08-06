@@ -14,9 +14,32 @@ eval set -- "$(\
 		"$@" \
 )"
 
+function read_boolean_var {
+	case "${!"$1":-}" in
+		true)
+			# KZF_FOO_BAR -> FOO_BAR
+			: "${1#*_}"
+			# FOO_BAR -> foo_bar
+			: "${_,,}"
+			# foo_bar foo-bar
+			: "${_//_/-}"
+			echo "--${_}"
+			;;
+		*) ;;
+	esac
+}
+
 declare -A flag=(
-	['watch']='4s'
-	['tail']='-1'
+	['all-namespaces']="$(read_boolean_var KZF_ALL_NAMESPACES)"
+	['context']="${KZF_CONTEXT-}"
+	['debug']="$(read_boolean_var KZF_DEBUG)"
+	['mux']="${KZF_MUX-}"
+	['namespace']="${KZF_NAMESPACE-}"
+	['select-context']="$(read_boolean_var KZF_SELECT_CONTEXT)"
+	['select-namespace']="$(read_boolean_var KZF_SELECT_NAMESPACE)"
+	['select-resource']="$(read_boolean_var KZF_SELECT_RESOURCE)"
+	['tail']="${KZF_TAIL:-'-1'}"
+	['watch']="${KZF_WATCH:-4s}"
 )
 
 function fmt_flags {
@@ -69,7 +92,8 @@ for opt in "$@"; do
 done
 
 if [ -n "${flag["help"]-}" ]; then
-	echo "Usage: $progname [flags] [<resource> [<query>]]
+	cat <<'EOF'
+Usage: $progname [flags] [<resource> [<query>]]
 
 kubectl fuzzy finder
 
@@ -78,24 +102,45 @@ Arguments:
   <query>       The initial fzf query.
 
 Flags:
-      --debug               Run in debug mode.
-  -h, --help                Show context-sensitive help.
-      --mux=STRING          Enable terminal multiplexer integration.
-                            One of: zj|zellij
-      --select-context      Fuzzy find the context to view resoruces in.
-      --select-namespace    Fuzzy find the namespace to view resoruces in.
-      --select-resource     Fuzzy find the resource kind to view.
-                            This is the default when <resource> is not given.
-  -w, --watch=DURATION      How often to refresh Kubernetes resources.
+      --debug[=BOOLEAN]              Run in debug mode.
+                                     (default: $KZF_DEBUG)
+
+  -h, --help                         Show this help text.
+
+      --mux=STRING                   Enable terminal multiplexer integration.
+                                     One of: zj|zellij
+                                     (default: $KZF_MUX)
+
+      --select-context[=BOOLEAN]     Fuzzy find the context to view resoruces in.
+                                     (default: $KZF_SELECT_CONTEXT)
+
+      --select-namespace[=BOOLEAN]   Fuzzy find the namespace to view resoruces in.
+                                     (default: $KZF_NAMESPACE)
+
+      --select-resource[=BOOLEAN]    Fuzzy find the resource kind to view.
+                                     This is the default when <resource> is not given.
+                                     (default: $KZF_SELECT_RESOURCE)
+
+  -w, --watch=DURATION               How often to refresh Kubernetes resources.
+                                     (default: ${KZF_WATCH:-4s})
 
 kubectl
-  -A, --all-namespaces      Show resources from every namespace.
-  -c, --context=STRING      The kubeconfig context to use.
-  -n, --namespace=STRING    The namespace to fuzzy find in.
-      --tail=INTEGER        When showing logs, the number of lines to display.
+  -A, --all-namespaces[=BOOLEAN]     Show resources from every namespace.
+                                     (default: $KZF_ALL_NAMESPACES)
+
+  -c, --context=STRING               The kubeconfig context to use.
+                                     (default: $KZF_CONTEXT)
+
+  -n, --namespace=STRING             The namespace to fuzzy find in.
+                                     (default: $KZF_NAMESPACE)
+
+      --tail=INTEGER                 When showing logs, the number of lines to display.
+                                     (default: ${KZF_TAIL:-'-1'})
 
 zellij
-      --zellij    Short for --mux=zellij."
+      --zj        Short for --zellij.
+      --zellij    Short for --mux=zellij.
+EOF
 
 	exit
 fi
