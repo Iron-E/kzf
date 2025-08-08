@@ -9,7 +9,7 @@ eval set -- "$(\
 	getopt \
 		-n "$progname" \
 		-o 'A::c:hn:w:' \
-		-l 'all-namespaces::,context:,debug::,help,mux:,namespace:,pager:,select-context::,select-namespace::,select-resource::,tail:,watch:,zellij,zj' \
+		-l 'all-namespaces::,context:,debug::,help,kubecolor::,mux:,namespace:,pager:,select-context::,select-namespace::,select-resource::,tail:,tspin::,viddy::,watch:,zellij,zj' \
 		-- \
 		"$@" \
 )"
@@ -30,13 +30,16 @@ declare -A flag=(
 	['all-namespaces']="$(read_boolean_var KZF_ALL_NS)"
 	['context']="${KZF_CTX-}"
 	['debug']="$(read_boolean_var KZF_DEBUG)"
+	['kubecolor']="$(read_boolean_var KZF_KUBECOLOR true)"
 	['mux']="${KZF_MUX-}"
 	['namespace']="${KZF_NS-}"
-	["pager"]="${KZF_PAGER:-${PAGER:-less}}"
+	['pager']="${KZF_PAGER:-${PAGER:-less}}"
 	['select-context']="$(read_boolean_var KZF_SEL_CTX)"
 	['select-namespace']="$(read_boolean_var KZF_SEL_NS)"
 	['select-resource']="$(read_boolean_var KZF_SEL_RESOURCE)"
 	['tail']="${KZF_TAIL:-'-1'}"
+	['tspin']="$(read_boolean_var KZF_TSPIN true)"
+	['viddy']="$(read_boolean_var KZF_VIDDY true)"
 	['watch']="${KZF_WATCH:-4s}"
 )
 
@@ -76,6 +79,7 @@ for opt in "$@"; do
 		-A|--all-namespaces)   set_boolean_flag "all-namespaces" "$2";   shift 2 ;;
 		-c|--context)          flag["context"]="$2";                     shift 2 ;;
 		   --debug)            set_boolean_flag "debug" "$2";            shift 2 ;;
+			--kubecolor)        set_boolean_flag "kubecolor" "$2";        shift 2 ;;
 		-h|--help)             flag["help"]="--help";                    shift 2 ;;
 		   --mux)              flag["mux"]="$2";                         shift 2 ;;
 		-n|--namespace)        flag["namespace"]="$2";                   shift 2 ;;
@@ -84,6 +88,8 @@ for opt in "$@"; do
 		   --select-namespace) set_boolean_flag "select-namespace" "$2"; shift 2 ;;
 		   --select-resource)  set_boolean_flag "select-resource" "$2";  shift 2 ;;
 		-t|--tail)             flag["tail"]="$2";                        shift 2 ;;
+			--tspin)            set_boolean_flag "tspin" "$2";            shift 2 ;;
+			--viddy)            set_boolean_flag "viddy" "$2";            shift 2 ;;
 		-w|--watch)            flag["watch"]="$2";                       shift 2 ;;
 		   --zj|--zellij)      flag["mux"]="zellij";                     shift 2 ;;
 		--) break ;;
@@ -174,7 +180,7 @@ function fmt_flags_for_fzf {
 
 watch_enabled=$(( "${flag["watch"]%[a-z]}" > 0 ))
 
-if command -v viddy &>/dev/null; then
+if [ -n "${flag["viddy"]-}" ] && command -v viddy &>/dev/null; then
 	viddy_opts=()
 	if [ "$watch_enabled" -eq 1 ]; then
 		viddy_opts+=("--interval" "${flag["watch"]}")
@@ -189,7 +195,7 @@ else
 	}
 fi
 
-if command -v tspin &>/dev/null; then
+if [ -n "${flag["tspin"]-}" ] && command -v tspin &>/dev/null; then
 	case "$(tspin --version)" in
 		*4.*.*) tspin_opt="-c" ;;
 		*) tspin_opt="-e" ;;
@@ -233,7 +239,7 @@ esac
 declare -a kubectl_common_opts
 kubectl_cmd=kubectl
 
-if command -v kubecolor &>/dev/null; then
+if [ -n "${flag["kubecolor"]-}" ] && command -v kubecolor &>/dev/null; then
 	kubectl_cmd=kubecolor
 	kubectl_common_opts+=("--force-colors")
 fi
