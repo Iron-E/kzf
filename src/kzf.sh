@@ -15,18 +15,15 @@ eval set -- "$(\
 )"
 
 function read_boolean_var {
-	case "${!"$1":-}" in
-		true)
-			# KZF_FOO_BAR -> FOO_BAR
-			: "${1#*_}"
-			# FOO_BAR -> foo_bar
-			: "${_,,}"
-			# foo_bar foo-bar
-			: "${_//_/-}"
-			echo "--${_}"
-			;;
-		*) ;;
-	esac
+	if [ "${!1:-}" = "true" ] || [ "${2-}" = "true" ]; then
+		# KZF_FOO_BAR -> FOO_BAR
+		: "${1#*_}"
+		# FOO_BAR -> foo_bar
+		: "${_,,}"
+		# foo_bar foo-bar
+		: "${_//_/-}"
+		echo "--${_}"
+	fi
 }
 
 declare -A flag=(
