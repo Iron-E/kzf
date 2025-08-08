@@ -30,14 +30,14 @@ function read_boolean_var {
 }
 
 declare -A flag=(
-	['all-namespaces']="$(read_boolean_var KZF_ALL_NAMESPACES)"
-	['context']="${KZF_CONTEXT-}"
+	['all-namespaces']="$(read_boolean_var KZF_ALL_NS)"
+	['context']="${KZF_CTX-}"
 	['debug']="$(read_boolean_var KZF_DEBUG)"
 	['mux']="${KZF_MUX-}"
-	['namespace']="${KZF_NAMESPACE-}"
-	['select-context']="$(read_boolean_var KZF_SELECT_CONTEXT)"
-	['select-namespace']="$(read_boolean_var KZF_SELECT_NAMESPACE)"
-	['select-resource']="$(read_boolean_var KZF_SELECT_RESOURCE)"
+	['namespace']="${KZF_NS-}"
+	['select-context']="$(read_boolean_var KZF_SEL_CTX)"
+	['select-namespace']="$(read_boolean_var KZF_SEL_NS)"
+	['select-resource']="$(read_boolean_var KZF_SEL_RESOURCE)"
 	['tail']="${KZF_TAIL:-'-1'}"
 	['watch']="${KZF_WATCH:-4s}"
 )
@@ -112,27 +112,27 @@ Flags:
                                      (default: $KZF_MUX)
 
       --select-context[=BOOLEAN]     Fuzzy find the context to view resoruces in.
-                                     (default: $KZF_SELECT_CONTEXT)
+                                     (default: $KZF_SEL_CTX)
 
       --select-namespace[=BOOLEAN]   Fuzzy find the namespace to view resoruces in.
-                                     (default: $KZF_NAMESPACE)
+                                     (default: $KZF_SEL_NS)
 
       --select-resource[=BOOLEAN]    Fuzzy find the resource kind to view.
                                      This is the default when <resource> is not given.
-                                     (default: $KZF_SELECT_RESOURCE)
+                                     (default: $KZF_SEL_RESOURCE)
 
   -w, --watch=DURATION               How often to refresh Kubernetes resources.
                                      (default: ${KZF_WATCH:-4s})
 
 kubectl
   -A, --all-namespaces[=BOOLEAN]     Show resources from every namespace.
-                                     (default: $KZF_ALL_NAMESPACES)
+                                     (default: $KZF_ALL_NS)
 
   -c, --context=STRING               The kubeconfig context to use.
-                                     (default: $KZF_CONTEXT)
+                                     (default: $KZF_CTX)
 
   -n, --namespace=STRING             The namespace to fuzzy find in.
-                                     (default: $KZF_NAMESPACE)
+                                     (default: $KZF_NS)
 
       --tail=INTEGER                 When showing logs, the number of lines to display.
                                      (default: ${KZF_TAIL:-'-1'})
