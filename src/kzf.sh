@@ -9,7 +9,7 @@ eval set -- "$(\
 	getopt \
 		-n "$progname" \
 		-o 'A::c:hn:w:' \
-		-l 'all-namespaces::,context:,debug::,help,mux:,namespace:,select-context::,select-namespace::,select-resource::,tail:,watch:,zellij,zj' \
+		-l 'all-namespaces::,context:,debug::,help,mux:,namespace:,pager:,select-context::,select-namespace::,select-resource::,tail:,watch:,zellij,zj' \
 		-- \
 		"$@" \
 )"
@@ -35,6 +35,7 @@ declare -A flag=(
 	['debug']="$(read_boolean_var KZF_DEBUG)"
 	['mux']="${KZF_MUX-}"
 	['namespace']="${KZF_NS-}"
+	["pager"]="${KZF_PAGER:-${PAGER:-less}}"
 	['select-context']="$(read_boolean_var KZF_SEL_CTX)"
 	['select-namespace']="$(read_boolean_var KZF_SEL_NS)"
 	['select-resource']="$(read_boolean_var KZF_SEL_RESOURCE)"
@@ -81,6 +82,7 @@ for opt in "$@"; do
 		-h|--help)             flag["help"]="--help";                    shift 2 ;;
 		   --mux)              flag["mux"]="$2";                         shift 2 ;;
 		-n|--namespace)        flag["namespace"]="$2";                   shift 2 ;;
+		   --pager)            flag["pager"]="$2";                       shift 2 ;;
 		   --select-context)   set_boolean_flag "select-context" "$2";   shift 2 ;;
 		   --select-namespace) set_boolean_flag "select-namespace" "$2"; shift 2 ;;
 		   --select-resource)  set_boolean_flag "select-resource" "$2";  shift 2 ;;
@@ -110,6 +112,13 @@ Flags:
       --mux=STRING                   Enable terminal multiplexer integration.
                                      One of: zj|zellij
                                      (default: $KZF_MUX)
+
+      --pager=STRING                 The command to use when paging the output of certain kubectl commands.
+
+                                     If you use an integration with colored output (e.g. kubecolor),
+                                     make sure this pager is configured to interpret those colors (e.g. --pager='less -R').
+
+                                     (default: ${KZF_PAGER:-${PAGER:-less}})
 
       --select-context[=BOOLEAN]     Fuzzy find the context to view resoruces in.
                                      (default: $KZF_SEL_CTX)
@@ -179,7 +188,7 @@ if command -v viddy &>/dev/null; then
 	}
 else
 	function kzf_live_pager {
-		echo "$* | $PAGER"
+		echo "$* | ${flag["pager"]}"
 	}
 fi
 
@@ -616,7 +625,7 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 		|| $let_user_read_error
 	EOF
 	)" \
-	--bind="alt-y:$(with_mux "${kubectl_get_yaml[*]@Q} | $PAGER")" \
+	--bind="alt-y:$(with_mux "${kubectl_get_yaml[*]@Q} | ${flag["pager"]}")" \
 	--bind="alt-c:become:$0 $(fmt_flags_for_fzf select) --select-context" \
 	--bind="alt-n:become:$0 $(fmt_flags_for_fzf select) --select-namespace" \
 	--bind="alt-k:become:$0 $(fmt_flags_for_fzf select) --select-resource" \
