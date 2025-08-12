@@ -144,11 +144,31 @@ kubectl
   -c, --context=STRING              The kubeconfig context to use.
                                     (default: $KZF_CONTEXT)
 
+      --kubecolor[=BOOLEAN]         Whether to enable the kubecolor integration.
+                                    This flag is ignored if kubecolor is not installed.
+
+                                    See: https://github.com/kubecolor/kubecolor
+                                    (default: ${KZF_KUBECOLOR:-true})
+
   -n, --namespace=STRING            The namespace to fuzzy find in.
                                     (default: $KZF_NAMESPACE-)
 
       --tail=INTEGER                When showing logs, the number of lines to display.
                                     (default: ${KZF_TAIL:-'-1'})
+
+tailspin
+      --tspin[=BOOLEAN]    Whether to enable the tailspin integration.
+                           This flag is ignored if tailspin is not installed.
+
+                           See: https://github.com/bensadeh/tailspin
+                           (default: ${KZF_TSPIN:-true})
+
+viddy
+      --viddy[=BOOLEAN]    Whether to enable the viddy integration.
+                           This flag is ignored if viddy is not installed.
+
+                           See: https://github.com/sachaos/viddy
+                           (default: ${KZF_VIDDY:-true})
 
 zellij
       --zj        Short for --zellij.
