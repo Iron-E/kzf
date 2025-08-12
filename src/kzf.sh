@@ -257,9 +257,9 @@ fzf_kubectl_opts=(
 function fzf_info_command {
 	# shellcheck disable=SC2016
 	echo -n echo '"(${FZF_INFO})'
-	echo -n "${flag["context"]+ ctx:${flag["context"]}}"
-	echo -n "${flag["namespace"]+ ns:${flag["namespace"]}}"
-	echo -n "${flag["all-namespaces"]+ ns:*}"
+	echo -n "${flag["context"]:+ ctx:${flag["context"]}}"
+	echo -n "${flag["namespace"]:+ ns:${flag["namespace"]}}"
+	echo -n "${flag["all-namespaces"]:+ ns:*}"
 	echo -n '"'
 }
 
