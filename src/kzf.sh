@@ -312,7 +312,6 @@ if [ -n "${flag["select-namespace"]-}" ]; then
 	namespaces="$(\
 		"$kubectl_cmd" get namespaces \
 			"${kubectl_common_opts[@]}" \
-			--context="${flag["context"]-}"
 	)"
 
 	read -r -d '' namespaces <<-EOF || true # read returns 1 on EOF
@@ -344,11 +343,12 @@ EOF
 	set -e
 fi
 
+kubectl_common_opts+=("--context=${flag["context"]-}")
+
 function kubectl_api_resources {
 	set -e -u -o pipefail
 
 	"$kubectl_cmd" api-resources \
-		--context="${flag["context"]-}" \
 		--namespace="${flag["namespace"]-}" \
 		--cached \
 		"${@}"
@@ -410,71 +410,37 @@ if [ -n "${flag["all-namespaces"]-}" ]; then
 fi
 
 kubectl_object_kind="${!kubectl_resource/all/}"
-kubectl_attach=(
-	"$kubectl_cmd" "attach" "${kubectl_object_kind:+${kubectl_object_kind}/}${fzf_kubectl_resource}"
-	"${kubectl_common_opts[*]}"
-	"--context=${flag["context"]-}"
+kubectl_binding_opts=(
+	"${kubectl_object_kind:+${kubectl_object_kind}/}${fzf_kubectl_resource}"
+	"${kubectl_common_opts[@]}"
 	"--namespace=$fzf_kubectl_namespace"
 )
 
+kubectl_attach=("$kubectl_cmd" "attach" "${kubectl_binding_opts[@]}")
+
 kubectl_delete=(
-	"$kubectl_cmd" "delete" "$kubectl_object_kind" "$fzf_kubectl_resource"
+	"$kubectl_cmd" "delete"
 	# SEE: https://github.com/kubecolor/kubecolor/issues/201#issuecomment-2508919907
-	"${kubectl_common_opts[*]/--force-colors/--plain}"
-	"--context=${flag["context"]-}"
-	"--namespace=$fzf_kubectl_namespace"
+	"${kubectl_binding_opts[@]/--force-colors/--plain}"
 	"--interactive=true" # prompt user
 	"--wait=false" # delete asynchronously
 )
 
-kubectl_describe=(
-	"$kubectl_cmd" "describe" "$kubectl_object_kind" "$fzf_kubectl_resource"
-	"${kubectl_common_opts[*]}"
-	"--context=${flag["context"]-}"
-	"--namespace=$fzf_kubectl_namespace"
-)
-
-kubectl_exec=(
-	"$kubectl_cmd" "exec" "${kubectl_object_kind:+${kubectl_object_kind}/}${fzf_kubectl_resource}"
-	"${kubectl_common_opts[@]}"
-	"--context=${flag["context"]-}"
-	"--namespace=$fzf_kubectl_namespace"
-	"-it"
-)
+kubectl_describe=("$kubectl_cmd" "describe" "${kubectl_binding_opts[@]}")
+kubectl_exec=("$kubectl_cmd" "exec" "${kubectl_binding_opts[@]}" "-it")
 
 read_kubectl_exec_cmd=("read" "-r" "-p" "Command> " "-e" "cmd")
 
 kubectl_get=(
 	"$kubectl_cmd" "get" "${!kubectl_resource}"
 	"${kubectl_common_opts[@]}"
-	"--context=${flag["context"]-}"
-	"--namespace=${flag["namespace"]-}"
+	"${flag["all-namespaces"]:-"--namespace=${flag["namespace"]-}"}"
 	"--show-labels"
-	"${flag["all-namespaces"]-}"
 )
 
-kubectl_get_yaml=(
-	"$kubectl_cmd" "get" "$kubectl_object_kind" "$fzf_kubectl_resource"
-	"${kubectl_common_opts[@]}"
-	"--context=${flag["context"]-}"
-	"--namespace=$fzf_kubectl_namespace"
-	"--output=yaml"
-)
-
-kubectl_logs=(
-	"$kubectl_cmd" "logs" "${kubectl_object_kind:+${kubectl_object_kind}/}${fzf_kubectl_resource}"
-	"${kubectl_common_opts[@]}"
-	"--context=${flag["context"]-}"
-	"--namespace=$fzf_kubectl_namespace"
-	"--follow"
-)
-
-kubectl_restart=(
-	"$kubectl_cmd" "rollout" "restart" "$kubectl_object_kind" "$fzf_kubectl_resource"
-	"${kubectl_common_opts[*]}"
-	"--context=${flag["context"]-}"
-	"--namespace=$fzf_kubectl_namespace"
-)
+kubectl_get_yaml=("$kubectl_cmd" "get" "${kubectl_binding_opts[@]}" "--output=yaml")
+kubectl_logs=("$kubectl_cmd" "logs" "${kubectl_binding_opts[@]}" "--follow")
+kubectl_restart=("$kubectl_cmd" "rollout" "restart" "${kubectl_binding_opts[@]}")
 
 let_user_read_error='read -rp "press enter to continue "'
 read -r -d '' kubectl_select_container <<-EOF || true
@@ -534,7 +500,12 @@ case "${!kubectl_resource}" in
 	*.*)
 		kubectl_resource_name="${!kubectl_resource%%.*}"
 		kubectl_resource_group="${!kubectl_resource#*.}"
-		kubectl_resource_kind="$(kubectl_api_resources --api-group="${kubectl_resource_group}" | grep -w "${kubectl_resource_name}")"
+		kubectl_resource_kind="$(
+			kubectl_api_resources \
+				"${kubectl_common_opts[*]/--force-colors/--plain}" \
+				--api-group="${kubectl_resource_group}" \
+			| grep -w "${kubectl_resource_name}"
+		)"
 		;;
 	*)
 		# explanation of regex.
