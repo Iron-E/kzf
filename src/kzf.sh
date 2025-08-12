@@ -27,16 +27,16 @@ function read_boolean_var {
 }
 
 declare -A flag=(
-	['all-namespaces']="$(read_boolean_var KZF_ALL_NS)"
-	['context']="${KZF_CTX-}"
+	['all-namespaces']="$(read_boolean_var KZF_ALL_NAMESPACES)"
+	['context']="${KZF_CONTEXT-}"
 	['debug']="$(read_boolean_var KZF_DEBUG)"
 	['kubecolor']="$(read_boolean_var KZF_KUBECOLOR true)"
 	['mux']="${KZF_MUX-}"
-	['namespace']="${KZF_NS-}"
+	['namespace']="${KZF_NAMESPACE-}"
 	['pager']="${KZF_PAGER:-${PAGER:-less}}"
-	['select-context']="$(read_boolean_var KZF_SEL_CTX)"
-	['select-namespace']="$(read_boolean_var KZF_SEL_NS)"
-	['select-resource']="$(read_boolean_var KZF_SEL_RESOURCE)"
+	['select-context']="$(read_boolean_var KZF_SELECT_CONTEXT)"
+	['select-namespace']="$(read_boolean_var KZF_SELECT_NAMESPACE)"
+	['select-resource']="$(read_boolean_var KZF_SELECT_RESOURCE)"
 	['tail']="${KZF_TAIL:-'-1'}"
 	['tspin']="$(read_boolean_var KZF_TSPIN true)"
 	['viddy']="$(read_boolean_var KZF_VIDDY true)"
@@ -107,47 +107,48 @@ Arguments:
   <query>       The initial fzf query.
 
 Flags:
-      --debug[=BOOLEAN]              Run in debug mode.
-                                     (default: $KZF_DEBUG)
+      --debug[=BOOLEAN]               Run in debug mode.
+                                      (default: $KZF_DEBUG)
 
-  -h, --help                         Show this help text.
+  -h, --help                          Show this help text.
 
-      --mux=STRING                   Enable terminal multiplexer integration.
-                                     One of: zj|zellij
-                                     (default: $KZF_MUX)
+      --mux=STRING                    Enable terminal multiplexer integration.
+                                      One of: zj|zellij
+                                      (default: $KZF_MUX)
 
-      --pager=STRING                 The command to use when paging the output of certain kubectl commands.
+      --pager=STRING                  The command to use when paging the output of certain kubectl commands.
 
-                                     If you use an integration with colored output (e.g. kubecolor),
-                                     make sure this pager is configured to interpret those colors (e.g. --pager='less -R').
+                                      If you use an integration with colored output (e.g. kubecolor),
+                                      make sure this pager is configured to interpret those colors
+                                      (e.g. --pager='less -R').
 
-                                     (default: ${KZF_PAGER:-${PAGER:-less}})
+                                      (default: ${KZF_PAGER:-${PAGER:-less}})
 
-      --select-context[=BOOLEAN]     Fuzzy find the context to view resoruces in.
-                                     (default: $KZF_SEL_CTX)
+      --select-context[=BOOLEAN]      Fuzzy find the context to view resoruces in.
+                                      (default: $KZF_SELECT_CONTEXT)
 
-      --select-namespace[=BOOLEAN]   Fuzzy find the namespace to view resoruces in.
-                                     (default: $KZF_SEL_NS)
+      --select-namespace[=BOOLEAN]    Fuzzy find the namespace to view resoruces in.
+                                      (default: $KZF_SELECT_NAMESPACE)
 
-      --select-resource[=BOOLEAN]    Fuzzy find the resource kind to view.
-                                     This is the default when <resource> is not given.
-                                     (default: $KZF_SEL_RESOURCE)
+      --select-resource[=BOOLEAN]     Fuzzy find the resource kind to view.
+                                      This is the default when <resource> is not given.
+                                      (default: $KZF_SELECT_RESOURCE)
 
-  -w, --watch=DURATION               How often to refresh Kubernetes resources.
-                                     (default: ${KZF_WATCH:-4s})
+  -w, --watch=DURATION                How often to refresh Kubernetes resources.
+                                      (default: ${KZF_WATCH:-4s})
 
 kubectl
-  -A, --all-namespaces[=BOOLEAN]     Show resources from every namespace.
-                                     (default: $KZF_ALL_NS)
+  -A, --all-namespaces[=BOOLEAN]    Show resources from every namespace.
+                                    (default: $KZF_ALL_NAMESPACES)
 
-  -c, --context=STRING               The kubeconfig context to use.
-                                     (default: $KZF_CTX)
+  -c, --context=STRING              The kubeconfig context to use.
+                                    (default: $KZF_CONTEXT)
 
-  -n, --namespace=STRING             The namespace to fuzzy find in.
-                                     (default: $KZF_NS)
+  -n, --namespace=STRING            The namespace to fuzzy find in.
+                                    (default: $KZF_NAMESPACE-)
 
-      --tail=INTEGER                 When showing logs, the number of lines to display.
-                                     (default: ${KZF_TAIL:-'-1'})
+      --tail=INTEGER                When showing logs, the number of lines to display.
+                                    (default: ${KZF_TAIL:-'-1'})
 
 zellij
       --zj        Short for --zellij.
