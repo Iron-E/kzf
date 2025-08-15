@@ -54,6 +54,7 @@ function fmt_flags {
 
 		value="${flag["$key"]}"
 		case "$value" in
+			'') ;; # unset flag
 			"--$key") echo -n " $value" ;; # is a boolean flag
 			*) echo -n " --${key}=${value}" ;; # is not a boolean flag
 		esac
