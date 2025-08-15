@@ -365,7 +365,7 @@ function select_kubectl_resource {
 
 	local api_resources_body
 	api_resources_body="$(echo "$api_resources" | tail -n +2)"
-	api_resources_body="$(printf "all\n%s" "$api_resources_body" | sort)"
+	api_resources_body="$(printf "all\n%s" "$api_resources_body")"
 
 	local selected
 	selected="$(\
@@ -500,14 +500,7 @@ case "${!kubectl_resource}" in
 	*.*)
 		kubectl_resource_name="${!kubectl_resource%%.*}"
 		kubectl_resource_group="${!kubectl_resource#*.}"
-		kubectl_resource_kind="$(
-			kubectl_api_resources \
-				"${kubectl_common_opts[*]/--force-colors/--plain}" \
-				--api-group="${kubectl_resource_group}" \
-			| grep -w "${kubectl_resource_name}"
-		)"
-		;;
-	*)
+
 		# explanation of regex.
 		# sample output of api-resources:
 		#
@@ -517,13 +510,42 @@ case "${!kubectl_resource}" in
 		# ```
 		#
 		# We want to match lines based on NAME, SHORTNAMES, or KIND.
-		# This is because valid user input could be one of:
+		# This is because valid user input could be one of (case insensitive):
 		#
-		# - storageclasses
-		# - storageclass
-		# - StorageClass
+		# - sc[.stor[age.k8s.io]]
+		# - storageclass[.stor[age.k8s.io]]
+		# - storageclasses[.stor[age.k8s.io]]
 		#
-		kubectl_resource_kind="$(kubectl_api_resources | grep -iE "(^|,|\s)${!kubectl_resource}(\s|,|$)")"
+		# To do this, it is necessary to match on one of:
+		#
+		# 1. (NAME|SHORTNAMES)
+		match_name="${kubectl_resource_name}\s+"
+		match_any_name="\w+\s+"
+
+		# neovim parses (( as an arithmetic expression without single qutoes, so this line has to get a little funky
+		match_shortname='((\w+,)*'"${kubectl_resource_name}"'(,\w+)*\s+)'
+		match_any_shortname="\S*\s*"
+
+		match_group_name="${kubectl_resource_group}\S*\s+"
+
+		match_any_kind="\w+"
+		match_any_namespaced="\w+\s+"
+
+		match_on_name_or_shortname="^($match_name$match_any_shortname|$match_any_name$match_shortname)$match_group_name$match_any_namespaced$match_any_kind\$"
+		match_on_kind="^$match_any_name$match_any_shortname$match_group_name$match_any_namespaced$kubectl_resource_name\$"
+
+		kubectl_resource_kind="$(
+			kubectl_api_resources "${kubectl_common_opts[@]/--force-colors/--plain}" \
+			| grep -iE "$match_on_name_or_shortname|$match_on_kind" \
+			| head -n 1
+		)"
+		;;
+	*)
+		kubectl_resource_kind="$(
+			kubectl_api_resources \
+			| grep -iE "(^|,|\s)${!kubectl_resource}(\s|,|$)" \
+			| head -n 1
+		)"
 		;;
 esac
 
