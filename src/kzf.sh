@@ -192,7 +192,7 @@ kubectl_resource='positional_args[0]'
 fzf_query='positional_args[1]'
 
 function fmt_kzf_positional_args_for_fzf {
-	echo "${positional_args[*]:0:1} {q} ${positional_args[*]:2}"
+	echo "${positional_args[@]:0:1}" '{q}' "${positional_args[@]:2}"
 }
 
 function fmt_flags_for_fzf {
@@ -208,11 +208,11 @@ if [ -n "${flag["viddy"]:-}" ] && command -v viddy &>/dev/null; then
 	fi
 
 	function kzf_live_pager {
-		echo "viddy ${viddy_opts[*]} $*"
+		echo viddy "${viddy_opts[@]}" "$@"
 	}
 else
 	function kzf_live_pager {
-		echo "$* | ${flag["pager"]}"
+		echo "$@" '|' "${flag["pager"]}"
 	}
 fi
 
@@ -461,10 +461,10 @@ read -r -d '' kubectl_select_container <<-EOF || true
 			;;
 	esac
 
-	containers=\$(\
+	containers="\$(
 		${kubectl_get_yaml[*]/--output=yaml/} \
 			--output jsonpath="\${jsonpath}" \
-	)
+	)"
 
 	if [ -z "\$containers" ]; then
 		echo $kubectl_object_kind $fzf_kubectl_resource has no containers
