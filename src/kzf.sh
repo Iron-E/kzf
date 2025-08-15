@@ -15,7 +15,7 @@ eval set -- "$(\
 )"
 
 function read_boolean_var {
-	if [ "${!1:-}" = "true" ] || [ "${2-}" = "true" ]; then
+	if [ "${!1:-}" = "true" ] || [ "${2:-}" = "true" ]; then
 		# KZF_FOO_BAR -> FOO_BAR
 		: "${1#*_}"
 		# FOO_BAR -> foo_bar
@@ -28,11 +28,11 @@ function read_boolean_var {
 
 declare -A flag=(
 	['all-namespaces']="$(read_boolean_var KZF_ALL_NAMESPACES)"
-	['context']="${KZF_CONTEXT-}"
+	['context']="${KZF_CONTEXT:-}"
 	['debug']="$(read_boolean_var KZF_DEBUG)"
 	['kubecolor']="$(read_boolean_var KZF_KUBECOLOR true)"
-	['mux']="${KZF_MUX-}"
-	['namespace']="${KZF_NAMESPACE-}"
+	['mux']="${KZF_MUX:-}"
+	['namespace']="${KZF_NAMESPACE:-}"
 	['pager']="${KZF_PAGER:-${PAGER:-less}}"
 	['select-context']="$(read_boolean_var KZF_SELECT_CONTEXT)"
 	['select-namespace']="$(read_boolean_var KZF_SELECT_NAMESPACE)"
@@ -44,7 +44,7 @@ declare -A flag=(
 )
 
 function fmt_flags {
-	ignored_prefix="${1-}"
+	ignored_prefix="${1:-}"
 	for key in "${!flag[@]}"; do
 		# if removing the ignored prefix from a key makes it different than what
 		# the key originally was, skip it
@@ -96,7 +96,7 @@ for opt in "$@"; do
 	esac
 done
 
-if [ -n "${flag["help"]-}" ]; then
+if [ -n "${flag["help"]:-}" ]; then
 	cat <<'EOF'
 Usage: $progname [flags] [<resource> [<query>]]
 
@@ -178,12 +178,12 @@ EOF
 	exit
 fi
 
-if [ -n "${flag["debug"]-}" ]; then
+if [ -n "${flag["debug"]:-}" ]; then
 	trap 'echo exit due to error on line $LINENO' ERR
 fi
 
 # handle case where there are no args
-if [ "${1-}" = "--" ]; then
+if [ "${1:-}" = "--" ]; then
 	shift
 fi
 
@@ -201,7 +201,7 @@ function fmt_flags_for_fzf {
 
 watch_enabled=$(( "${flag["watch"]%[a-z]}" > 0 ))
 
-if [ -n "${flag["viddy"]-}" ] && command -v viddy &>/dev/null; then
+if [ -n "${flag["viddy"]:-}" ] && command -v viddy &>/dev/null; then
 	viddy_opts=()
 	if [ "$watch_enabled" -eq 1 ]; then
 		viddy_opts+=("--interval" "${flag["watch"]}")
@@ -216,7 +216,7 @@ else
 	}
 fi
 
-if [ -n "${flag["tspin"]-}" ] && command -v tspin &>/dev/null; then
+if [ -n "${flag["tspin"]:-}" ] && command -v tspin &>/dev/null; then
 	case "$(tspin --version)" in
 		*4.*.*) tspin_opt="-c" ;;
 		*) tspin_opt="-e" ;;
@@ -240,7 +240,7 @@ function with_mux {
 	echo "execute:$cmd"
 }
 
-case "${flag["mux"]-}" in
+case "${flag["mux"]:-}" in
 	zj|zellij)
 		if command -v zellij &>/dev/null; then
 			function with_mux {
@@ -260,7 +260,7 @@ esac
 declare -a kubectl_common_opts
 kubectl_cmd=kubectl
 
-if [ -n "${flag["kubecolor"]-}" ] && command -v kubecolor &>/dev/null; then
+if [ -n "${flag["kubecolor"]:-}" ] && command -v kubecolor &>/dev/null; then
 	kubectl_cmd=kubecolor
 	kubectl_common_opts+=("--force-colors")
 fi
@@ -284,7 +284,7 @@ function fzf_info_command {
 	echo -n '"'
 }
 
-if [ -n "${flag["select-context"]-}" ]; then
+if [ -n "${flag["select-context"]:-}" ]; then
 	contexts="$(
 		"$kubectl_cmd" config get-contexts \
 			"${kubectl_common_opts[@]}"
@@ -308,7 +308,7 @@ if [ -n "${flag["select-context"]-}" ]; then
 	set -e
 fi
 
-if [ -n "${flag["select-namespace"]-}" ]; then
+if [ -n "${flag["select-namespace"]:-}" ]; then
 	namespaces="$(\
 		"$kubectl_cmd" get namespaces \
 			"${kubectl_common_opts[@]}" \
@@ -343,13 +343,13 @@ EOF
 	set -e
 fi
 
-kubectl_common_opts+=("--context=${flag["context"]-}")
+kubectl_common_opts+=("--context=${flag["context"]:-}")
 
 function kubectl_api_resources {
 	set -e -u -o pipefail
 
 	"$kubectl_cmd" api-resources \
-		--namespace="${flag["namespace"]-}" \
+		--namespace="${flag["namespace"]:-}" \
 		--cached \
 		"${@}"
 }
@@ -385,9 +385,9 @@ function select_kubectl_resource {
 	echo "${name}${group:+.$group}"
 }
 
-if [ -z "${!kubectl_resource-}" ]; then
+if [ -z "${!kubectl_resource:-}" ]; then
 	positional_args[0]="$(select_kubectl_resource)"
-elif [ -n "${flag["select-resource"]-}" ]; then
+elif [ -n "${flag["select-resource"]:-}" ]; then
 	set +e
 	new_kubectl_resource="$(select_kubectl_resource)";
 
@@ -400,12 +400,12 @@ elif [ -n "${flag["select-resource"]-}" ]; then
 fi
 
 fzf_kubectl_resource="{1}"
-if [ -n "${flag["all-namespaces"]-}" ]; then
+if [ -n "${flag["all-namespaces"]:-}" ]; then
 	fzf_kubectl_resource="{2}"
 fi
 
-fzf_kubectl_namespace="${flag["namespace"]-}"
-if [ -n "${flag["all-namespaces"]-}" ]; then
+fzf_kubectl_namespace="${flag["namespace"]:-}"
+if [ -n "${flag["all-namespaces"]:-}" ]; then
 	fzf_kubectl_namespace="{1}"
 fi
 
@@ -434,7 +434,7 @@ read_kubectl_exec_cmd=("read" "-r" "-p" "Command> " "-e" "cmd")
 kubectl_get=(
 	"$kubectl_cmd" "get" "${!kubectl_resource}"
 	"${kubectl_common_opts[@]}"
-	"${flag["all-namespaces"]:-"--namespace=${flag["namespace"]-}"}"
+	"${flag["all-namespaces"]:-"--namespace=${flag["namespace"]:-}"}"
 	"--show-labels"
 )
 
@@ -539,7 +539,7 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	"${fzf_watch_opts[@]}" \
 	--prompt "${kubectl_resource_kind}> " \
 	--info-command="$(fzf_info_command)" \
-	--query="${!fzf_query-}" \
+	--query="${!fzf_query:-}" \
 	--accept-nth="$fzf_kubectl_resource" \
 	--bind='change:transform-search:
 		echo -n {q}
