@@ -14,7 +14,7 @@ eval set -- "$(\
 		"$@" \
 )"
 
-function read_boolean_var {
+function flag_from_env {
 	if [ "${!1:-}" = "true" ] || [ "${2:-}" = "true" ]; then
 		# KZF_FOO_BAR -> FOO_BAR
 		: "${1#*_}"
@@ -26,37 +26,71 @@ function read_boolean_var {
 	fi
 }
 
-declare -A flag=(
-	['all-namespaces']="$(read_boolean_var KZF_ALL_NAMESPACES)"
+declare -A default_option=(
 	['context']="${KZF_CONTEXT:-}"
-	['debug']="$(read_boolean_var KZF_DEBUG)"
-	['kubecolor']="$(read_boolean_var KZF_KUBECOLOR true)"
 	['mux']="${KZF_MUX:-}"
 	['namespace']="${KZF_NAMESPACE:-}"
 	['pager']="${KZF_PAGER:-${PAGER:-less}}"
-	['select-context']="$(read_boolean_var KZF_SELECT_CONTEXT)"
-	['select-namespace']="$(read_boolean_var KZF_SELECT_NAMESPACE)"
-	['select-resource']="$(read_boolean_var KZF_SELECT_RESOURCE)"
 	['tail']="${KZF_TAIL:-'-1'}"
-	['tspin']="$(read_boolean_var KZF_TSPIN true)"
-	['viddy']="$(read_boolean_var KZF_VIDDY true)"
 	['watch']="${KZF_WATCH:-4s}"
 )
 
-function fmt_flags {
+declare -A option
+for key in "${!default_option[@]}"; do
+	option["${key}"]="${default_option["$key"]}"
+done
+
+declare -A default_flag=(
+	['all-namespaces']="$(flag_from_env KZF_ALL_NAMESPACES)"
+	['debug']="$(flag_from_env KZF_DEBUG)"
+	['kubecolor']="$(flag_from_env KZF_KUBECOLOR true)"
+	['select-context']="$(flag_from_env KZF_SELECT_CONTEXT)"
+	['select-namespace']="$(flag_from_env KZF_SELECT_NAMESPACE)"
+	['select-resource']="$(flag_from_env KZF_SELECT_RESOURCE)"
+	['tspin']="$(flag_from_env KZF_TSPIN true)"
+	['viddy']="$(flag_from_env KZF_VIDDY true)"
+)
+
+declare -A flag
+for key in "${!default_flag[@]}"; do
+	flag["${key}"]="${default_flag["$key"]}"
+done
+
+function fmt_options_and_flags {
 	ignored_prefix="${1:-}"
-	for key in "${!flag[@]}"; do
+
+	local value
+	for key in "${!default_flag[@]}"; do
 		# if removing the ignored prefix from a key makes it different than what
 		# the key originally was, skip it
 		if [ "${key}" != "${key#"$ignored_prefix"}" ]; then
 			continue
 		fi
 
+		# --foo=false unsets the var
+		if [ ! -v "flag[${key}]" ]; then
+			echo -n " --${key}=false"
+			continue
+		fi
+
 		value="${flag["$key"]}"
 		case "$value" in
-			'') ;; # unset flag
-			"--$key") echo -n " $value" ;; # is a boolean flag
-			*) echo -n " --${key}=${value}" ;; # is not a boolean flag
+			"${default_flag["$key"]:-}") ;; # omit, is a default
+			"--$key") echo -n " $value" ;; # set
+		esac
+	done
+
+	for key in "${!default_option[@]}"; do
+		# if removing the ignored prefix from a key makes it different than what
+		# the key originally was, skip it
+		if [ "${key}" != "${key#"$ignored_prefix"}" ]; then
+			continue
+		fi
+
+		value="${option["$key"]}"
+		case "$value" in
+			"${default_option["$key"]:-}") ;; # omit, is a default
+			*) echo -n " ${option["$key"]} " ;; # set
 		esac
 	done
 }
@@ -65,7 +99,7 @@ function fmt_flags {
 #
 # 1. name of the flag to set
 # 2. "true", "false", or no value (defaults to "true")
-function set_boolean_flag {
+function set_flag {
 	if [ "$2" = "false" ]; then
 		unset 'flag["$1"]'
 		return
@@ -77,27 +111,27 @@ function set_boolean_flag {
 # parse args
 for opt in "$@"; do
 	case "$opt" in
-		-A|--all-namespaces)   set_boolean_flag "all-namespaces" "$2";   shift 2 ;;
-		-c|--context)          flag["context"]="$2";                     shift 2 ;;
-		   --debug)            set_boolean_flag "debug" "$2";            shift 2 ;;
-			--kubecolor)        set_boolean_flag "kubecolor" "$2";        shift 2 ;;
-		-h|--help)             flag["help"]="--help";                    shift 2 ;;
-		   --mux)              flag["mux"]="$2";                         shift 2 ;;
-		-n|--namespace)        flag["namespace"]="$2";                   shift 2 ;;
-		   --pager)            flag["pager"]="$2";                       shift 2 ;;
-		   --select-context)   set_boolean_flag "select-context" "$2";   shift 2 ;;
-		   --select-namespace) set_boolean_flag "select-namespace" "$2"; shift 2 ;;
-		   --select-resource)  set_boolean_flag "select-resource" "$2";  shift 2 ;;
-		-t|--tail)             flag["tail"]="$2";                        shift 2 ;;
-			--tspin)            set_boolean_flag "tspin" "$2";            shift 2 ;;
-			--viddy)            set_boolean_flag "viddy" "$2";            shift 2 ;;
-		-w|--watch)            flag["watch"]="$2";                       shift 2 ;;
-		   --zj|--zellij)      flag["mux"]="zellij";                     shift 2 ;;
+		-A|--all-namespaces)   set_flag "all-namespaces" "$2";   shift 2 ;;
+		-c|--context)          option["context"]="$2";           shift 2 ;;
+		   --debug)            set_flag "debug" "$2";            shift 2 ;;
+			--kubecolor)        set_flag "kubecolor" "$2";        shift 2 ;;
+		-h|--help)             option["help"]="--help";          shift 2 ;;
+		   --mux)              option["mux"]="$2";               shift 2 ;;
+		-n|--namespace)        option["namespace"]="$2";         shift 2 ;;
+		   --pager)            option["pager"]="$2";             shift 2 ;;
+		   --select-context)   set_flag "select-context" "$2";   shift 2 ;;
+		   --select-namespace) set_flag "select-namespace" "$2"; shift 2 ;;
+		   --select-resource)  set_flag "select-resource" "$2";  shift 2 ;;
+		-t|--tail)             option["tail"]="$2";              shift 2 ;;
+			--tspin)            set_flag "tspin" "$2";            shift 2 ;;
+			--viddy)            set_flag "viddy" "$2";            shift 2 ;;
+		-w|--watch)            option["watch"]="$2";             shift 2 ;;
+		   --zj|--zellij)      option["mux"]="zellij";           shift 2 ;;
 		--) break ;;
 	esac
 done
 
-if [ -n "${flag["help"]:-}" ]; then
+if [ -n "${option["help"]:-}" ]; then
 	cat <<'EOF'
 Usage: $progname [flags] [<resource> [<query>]]
 
@@ -197,15 +231,15 @@ function fmt_kzf_positional_args_for_fzf {
 }
 
 function fmt_flags_for_fzf {
-	echo "$(fmt_flags "$@")" "$(fmt_kzf_positional_args_for_fzf)"
+	echo "$(fmt_options_and_flags "$@")" "$(fmt_kzf_positional_args_for_fzf)"
 }
 
-watch_enabled=$(( "${flag["watch"]%[a-z]}" > 0 ))
+watch_enabled=$(( "${option["watch"]%[a-z]}" > 0 ))
 
 if [ -n "${flag["viddy"]:-}" ] && command -v viddy &>/dev/null; then
 	viddy_opts=()
 	if [ "$watch_enabled" -eq 1 ]; then
-		viddy_opts+=("--interval" "${flag["watch"]}")
+		viddy_opts+=("--interval" "${option["watch"]}")
 	fi
 
 	function kzf_live_pager {
@@ -213,7 +247,7 @@ if [ -n "${flag["viddy"]:-}" ] && command -v viddy &>/dev/null; then
 	}
 else
 	function kzf_live_pager {
-		echo "$@" '|' "${flag["pager"]}"
+		echo "$@" '|' "${option["pager"]}"
 	}
 fi
 
@@ -241,7 +275,7 @@ function with_mux {
 	echo "execute:$cmd"
 }
 
-case "${flag["mux"]:-}" in
+case "${option["mux"]:-}" in
 	zj|zellij)
 		if command -v zellij &>/dev/null; then
 			function with_mux {
@@ -279,8 +313,8 @@ fzf_kubectl_opts=(
 function fzf_info_command {
 	# shellcheck disable=SC2016
 	echo -n echo '"(${FZF_INFO})'
-	echo -n "${flag["context"]:+ ctx:${flag["context"]}}"
-	echo -n "${flag["namespace"]:+ ns:${flag["namespace"]}}"
+	echo -n "${option["context"]:+ ctx:${option["context"]}}"
+	echo -n "${option["namespace"]:+ ns:${option["namespace"]}}"
 	echo -n "${flag["all-namespaces"]:+ ns:*}"
 	echo -n '"'
 }
@@ -303,7 +337,7 @@ if [ -n "${flag["select-context"]:-}" ]; then
 
 	# shellcheck disable=SC2181
 	if [ $? = 0 ]; then
-		flag["context"]="$context"
+		option["context"]="$context"
 	fi
 
 	set -e
@@ -328,7 +362,7 @@ EOF
 			"${fzf_common_opts[@]}" \
 			"${fzf_kubectl_opts[@]}" \
 			--prompt 'Select Namespace> ' \
-			--info-command="echo \"(\$FZF_INFO) ${flag["context"]+ ctx:${flag["context"]}}\"" \
+			--info-command="echo \"(\$FZF_INFO) ${option["context"]+ ctx:${option["context"]}}\"" \
 			--accept-nth=1
 	)"
 
@@ -336,21 +370,21 @@ EOF
 	if [ $? = 0 ]; then
 		unset 'flag["all-namespaces"]' 'flag["namespace"]'
 		case "$namespace" in
-			--all-namespaces) set_boolean_flag all-namespaces true ;;
-			*) flag["namespace"]="$namespace" ;;
+			--all-namespaces) set_flag all-namespaces true ;;
+			*) option["namespace"]="$namespace" ;;
 		esac
 	fi
 
 	set -e
 fi
 
-kubectl_common_opts+=("--context=${flag["context"]:-}")
+kubectl_common_opts+=("--context=${option["context"]:-}")
 
 function kubectl_api_resources {
 	set -e -u -o pipefail
 
 	"$kubectl_cmd" api-resources \
-		--namespace="${flag["namespace"]:-}" \
+		--namespace="${option["namespace"]:-}" \
 		--cached \
 		"${@}"
 }
@@ -405,7 +439,7 @@ if [ -n "${flag["all-namespaces"]:-}" ]; then
 	fzf_kubectl_resource="{2}"
 fi
 
-fzf_kubectl_namespace="${flag["namespace"]:-}"
+fzf_kubectl_namespace="${option["namespace"]:-}"
 if [ -n "${flag["all-namespaces"]:-}" ]; then
 	fzf_kubectl_namespace="{1}"
 fi
@@ -435,7 +469,7 @@ read_kubectl_exec_cmd=("read" "-r" "-p" "Command> " "-e" "cmd")
 kubectl_get=(
 	"$kubectl_cmd" "get" "${!kubectl_resource}"
 	"${kubectl_common_opts[@]}"
-	"${flag["all-namespaces"]:-"--namespace=${flag["namespace"]:-}"}"
+	"${flag["all-namespaces"]:-"--namespace=${option["namespace"]:-}"}"
 	"--show-labels"
 )
 
@@ -487,7 +521,7 @@ if [ "$watch_enabled" -eq 1 ]; then
 		'--listen'
 		"--bind=start:+bg-transform:
 			while true; do
-				sleep ${flag["watch"]@Q}
+				sleep ${option["watch"]@Q}
 				curl -X POST \"localhost:\$FZF_PORT\" -d 'reload-sync:${kubectl_get[*]}' --silent
 			done &
 		"
@@ -643,7 +677,7 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 		|| $let_user_read_error
 	EOF
 	)" \
-	--bind="alt-y:$(with_mux "${kubectl_get_yaml[*]@Q} | ${flag["pager"]}")" \
+	--bind="alt-y:$(with_mux "${kubectl_get_yaml[*]@Q} | ${option["pager"]}")" \
 	--bind="alt-c:become:$0 $(fmt_flags_for_fzf select) --select-context" \
 	--bind="alt-n:become:$0 $(fmt_flags_for_fzf select) --select-namespace" \
 	--bind="alt-k:become:$0 $(fmt_flags_for_fzf select) --select-resource" \
