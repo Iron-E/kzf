@@ -499,6 +499,7 @@ read -r -d '' kubectl_select_container <<-EOF || true
 	containers="\$(
 		${kubectl_get_yaml[*]/--output=yaml/} \
 			--output jsonpath="\${jsonpath}" \
+		| tr ' ' $'\n'
 	)"
 
 	if [ -z "\$containers" ]; then
