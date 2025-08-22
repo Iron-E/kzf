@@ -479,6 +479,7 @@ kubectl_restart=("$kubectl_cmd" "rollout" "restart" "${kubectl_binding_opts[@]}"
 
 let_user_read_error='read -rp "press enter to continue "'
 read -r -d '' kubectl_select_container <<-EOF || true
+	set -euo pipefail
 	shopt -s extglob lastpipe
 	case "${kubectl_object_kind}" in
 		deploy?(ment?(s?(.apps)))|rs|replicaset?(s?(.apps))|job?(s?(.batch)))
