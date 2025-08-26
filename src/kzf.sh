@@ -90,7 +90,7 @@ function fmt_options_and_flags {
 		value="${option["$key"]}"
 		case "$value" in
 			"${default_option["$key"]:-}") ;; # omit, is a default
-			*) echo -n " ${option["$key"]} " ;; # set
+			*) echo -n " --${key}=${value@Q}" ;; # set
 		esac
 	done
 }
