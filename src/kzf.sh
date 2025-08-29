@@ -475,7 +475,7 @@ kubectl_get=(
 	"$kubectl_cmd" "get" "${!kubectl_resource}"
 	"${kubectl_common_opts[@]}"
 	"${flag["all-namespaces"]:-"--namespace=${option["namespace"]:-}"}"
-	"${flag["show-labels"]}"
+	"${flag["show-labels"]:-}"
 	"--output" "wide"
 )
 
@@ -686,6 +686,7 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	EOF
 	)" \
 	--bind="alt-y:$(with_mux "${kubectl_get_yaml[*]@Q} | ${option["pager"]}")" \
+	--bind="f2:become:$0 $(fmt_flags_for_fzf show-labels) --show-labels${flag["show-labels"]:+=false}" \
 	--bind="alt-c:become:$0 $(fmt_flags_for_fzf select) --select-context" \
 	--bind="alt-n:become:$0 $(fmt_flags_for_fzf select) --select-namespace" \
 	--bind="alt-k:become:$0 $(fmt_flags_for_fzf select) --select-resource" \
@@ -694,6 +695,7 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	--bind='f1:change-preview-window(right,30%|hidden)' \
 	--preview-label="Help" \
 	--preview="cat <<-EOF
+		f2       toggle labels
 		alt-a    attach to default container
 		alt-A    select and attach to container
 		alt-c    change active context
