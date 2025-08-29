@@ -695,8 +695,11 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 		alt-D    delete resource --now (with confirmation)
 		alt-i    describe resource (mnemonic: inspect)
 		alt-k    change active resource kind
-		alt-l    show resource logs
+		alt-l    show container logs
+		alt-L    select and show container logs
 		alt-n    change active namespace
 		alt-r    restart resource
+		alt-x    execute command in container
+		alt-X    select and execute command in container
 		alt-y    show manifest (mnemonic: YAML)
 	EOF" \
