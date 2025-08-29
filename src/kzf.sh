@@ -367,7 +367,7 @@ EOF
 			"${fzf_common_opts[@]}" \
 			"${fzf_kubectl_opts[@]}" \
 			--prompt 'Select Namespace> ' \
-			--info-command="echo \"(\$FZF_INFO) ${option["context"]+ ctx:${option["context"]}}\"" \
+			--info-command="echo \"(\$FZF_INFO) ${option["context"]:+ ctx:${option["context"]}}\"" \
 			--accept-nth=1
 	)"
 
