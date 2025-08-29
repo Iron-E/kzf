@@ -186,7 +186,7 @@ kubectl
                                     (default: ${KZF_KUBECOLOR:-true})
 
   -n, --namespace=STRING            The namespace to fuzzy find in.
-                                    (default: $KZF_NAMESPACE-)
+                                    (default: $KZF_NAMESPACE)
 
       --tail=INTEGER                When showing logs, the number of lines to display.
                                     (default: ${KZF_TAIL:-'-1'})
