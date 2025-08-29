@@ -9,7 +9,7 @@ eval set -- "$(\
 	getopt \
 		-n "$progname" \
 		-o 'A::c:hn:w:' \
-		-l 'all-namespaces::,context:,debug::,help,kubecolor::,mux:,namespace:,pager:,select-context::,select-namespace::,select-resource::,tail:,tspin::,viddy::,watch:,zellij,zj' \
+		-l 'all-namespaces::,context:,debug::,help,kubecolor::,mux:,namespace:,pager:,select-context::,select-namespace::,select-resource::,show-labels::,tail:,tspin::,viddy::,watch:,zellij,zj' \
 		-- \
 		"$@" \
 )"
@@ -47,6 +47,7 @@ declare -A default_flag=(
 	['select-context']="$(flag_from_env KZF_SELECT_CONTEXT)"
 	['select-namespace']="$(flag_from_env KZF_SELECT_NAMESPACE)"
 	['select-resource']="$(flag_from_env KZF_SELECT_RESOURCE)"
+	['show-labels']="$(flag_from_env KZF_SHOW_LABELS)"
 	['tspin']="$(flag_from_env KZF_TSPIN true)"
 	['viddy']="$(flag_from_env KZF_VIDDY true)"
 )
@@ -122,6 +123,7 @@ for opt in "$@"; do
 		   --select-context)   set_flag "select-context" "$2";   shift 2 ;;
 		   --select-namespace) set_flag "select-namespace" "$2"; shift 2 ;;
 		   --select-resource)  set_flag "select-resource" "$2";  shift 2 ;;
+		   --show-labels)      set_flag "show-labels" "$2";      shift 2 ;;
 		-t|--tail)             option["tail"]="$2";              shift 2 ;;
 			--tspin)            set_flag "tspin" "$2";            shift 2 ;;
 			--viddy)            set_flag "viddy" "$2";            shift 2 ;;
@@ -187,6 +189,9 @@ kubectl
 
   -n, --namespace=STRING            The namespace to fuzzy find in.
                                     (default: $KZF_NAMESPACE)
+
+      --show-labels                 Show labels for resources in the main view.
+                                    (default: $KZF_SHOW_LABELS)
 
       --tail=INTEGER                When showing logs, the number of lines to display.
                                     (default: ${KZF_TAIL:-'-1'})
@@ -470,7 +475,8 @@ kubectl_get=(
 	"$kubectl_cmd" "get" "${!kubectl_resource}"
 	"${kubectl_common_opts[@]}"
 	"${flag["all-namespaces"]:-"--namespace=${option["namespace"]:-}"}"
-	"--show-labels"
+	"${flag["show-labels"]}"
+	"--output" "wide"
 )
 
 kubectl_get_yaml=("$kubectl_cmd" "get" "${kubectl_binding_opts[@]}" "--output=yaml")
