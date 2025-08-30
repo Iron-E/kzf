@@ -2,17 +2,17 @@
 set -e -u -o pipefail
 shopt -s extglob
 
-progname="$(basename "$0")"
+progname="${ basename "$0"; }"
 
 # declare and set flags
-eval set -- "$(\
+eval set -- "${
 	getopt \
 		-n "$progname" \
 		-o 'A::c:hn:w:' \
 		-l 'all-namespaces::,context:,debug::,help,kubecolor::,mux:,namespace:,pager:,select-context::,select-namespace::,select-resource::,show-labels::,tail:,tspin::,viddy::,watch:,zellij,zj' \
 		-- \
-		"$@" \
-)"
+		"$@"
+}"
 
 function flag_from_env {
 	if [ "${!1:-}" = "true" ] || [ "${2:-}" = "true" ]; then
@@ -41,15 +41,15 @@ for key in "${!default_option[@]}"; do
 done
 
 declare -A default_flag=(
-	['all-namespaces']="$(flag_from_env KZF_ALL_NAMESPACES)"
-	['debug']="$(flag_from_env KZF_DEBUG)"
-	['kubecolor']="$(flag_from_env KZF_KUBECOLOR true)"
-	['select-context']="$(flag_from_env KZF_SELECT_CONTEXT)"
-	['select-namespace']="$(flag_from_env KZF_SELECT_NAMESPACE)"
-	['select-resource']="$(flag_from_env KZF_SELECT_RESOURCE)"
-	['show-labels']="$(flag_from_env KZF_SHOW_LABELS)"
-	['tspin']="$(flag_from_env KZF_TSPIN true)"
-	['viddy']="$(flag_from_env KZF_VIDDY true)"
+	['all-namespaces']="${ flag_from_env KZF_ALL_NAMESPACES; }"
+	['debug']="${ flag_from_env KZF_DEBUG; }"
+	['kubecolor']="${ flag_from_env KZF_KUBECOLOR true; }"
+	['select-context']="${ flag_from_env KZF_SELECT_CONTEXT; }"
+	['select-namespace']="${ flag_from_env KZF_SELECT_NAMESPACE; }"
+	['select-resource']="${ flag_from_env KZF_SELECT_RESOURCE; }"
+	['show-labels']="${ flag_from_env KZF_SHOW_LABELS; }"
+	['tspin']="${ flag_from_env KZF_TSPIN true; }"
+	['viddy']="${ flag_from_env KZF_VIDDY true; }"
 )
 
 declare -A flag
@@ -236,7 +236,7 @@ function fmt_kzf_positional_args_for_fzf {
 }
 
 function fmt_flags_for_fzf {
-	echo "$(fmt_options_and_flags "$@")" "$(fmt_kzf_positional_args_for_fzf)"
+	echo "${ fmt_options_and_flags "$@"; }" "${ fmt_kzf_positional_args_for_fzf; }"
 }
 
 watch_enabled=$(( "${option["watch"]%[a-z]}" > 0 ))
@@ -257,7 +257,7 @@ else
 fi
 
 if [ -n "${flag["tspin"]:-}" ] && command -v tspin &>/dev/null; then
-	case "$(tspin --version)" in
+	case "${ tspin --version; }" in
 		*4.*.*) tspin_opt="-c" ;;
 		*) tspin_opt="-e" ;;
 	esac
@@ -325,20 +325,20 @@ function fzf_info_command {
 }
 
 if [ -n "${flag["select-context"]:-}" ]; then
-	contexts="$(
+	contexts="${
 		"$kubectl_cmd" config get-contexts \
 			"${kubectl_common_opts[@]}"
-	)"
+	}"
 
 	set +e
-	context="$(
+	context="${
 		echo "$contexts" \
 		| fzf \
 			"${fzf_common_opts[@]}" \
 			"${fzf_kubectl_opts[@]}" \
 			--prompt 'Selcct Context> ' \
 			--accept-nth=2
-	)";
+	}";
 
 	# shellcheck disable=SC2181
 	if [ $? = 0 ]; then
@@ -349,19 +349,19 @@ if [ -n "${flag["select-context"]:-}" ]; then
 fi
 
 if [ -n "${flag["select-namespace"]:-}" ]; then
-	namespaces="$(\
+	namespaces="${
 		"$kubectl_cmd" get namespaces \
-			"${kubectl_common_opts[@]}" \
-	)"
+			"${kubectl_common_opts[@]}"
+	}"
 
 	read -r -d '' namespaces <<-EOF || true # read returns 1 on EOF
-	$(echo "$namespaces" | head -n1)
+	${ echo "$namespaces" | head -n1; }
 	--all-namespaces
-	$(echo "$namespaces" | tail -n +2)
+	${ echo "$namespaces" | tail -n +2; }
 EOF
 
 	set +e
-	namespace="$(
+	namespace="${
 		echo "$namespaces" \
 		| fzf \
 			"${fzf_common_opts[@]}" \
@@ -369,7 +369,7 @@ EOF
 			--prompt 'Select Namespace> ' \
 			--info-command="echo \"(\$FZF_INFO) ${option["context"]:+ ctx:${option["context"]}}\"" \
 			--accept-nth=1
-	)"
+	}"
 
 	# shellcheck disable=SC2181
 	if [ $? = 0 ]; then
@@ -398,25 +398,25 @@ function select_kubectl_resource {
 	set -e -u -o pipefail
 
 	local api_resources
-	api_resources="$(kubectl_api_resources "${kubectl_common_opts[@]}")"
+	api_resources="${ kubectl_api_resources "${kubectl_common_opts[@]}"; }"
 
 	local api_resources_header
-	api_resources_header="$(echo "$api_resources" | head -n1)"
+	api_resources_header="${ echo "$api_resources" | head -n1; }"
 
 	local api_resources_body
-	api_resources_body="$(echo "$api_resources" | tail -n +2)"
-	api_resources_body="$(printf "all\n%s" "$api_resources_body")"
+	api_resources_body="${ echo "$api_resources" | tail -n +2; }"
+	api_resources_body="${ printf "all\n%s" "$api_resources_body"; }"
 
 	local selected
-	selected="$(\
+	selected="${
 		printf "%s\n%s" "$api_resources_header" "$api_resources_body" \
 		| fzf \
 			"${fzf_common_opts[@]}" \
 			"${fzf_kubectl_opts[@]}" \
 			--accept-nth='{1},{-3}' \
 			--prompt="Select Kind> " \
-			--info-command="$(fzf_info_command)" \
-	)"
+			--info-command="${ fzf_info_command; }"
+	}"
 
 	local name="${selected%,*}" # cronjobs,batch/v1 -> cronjobs
 	local group="${selected#*,}" # cronjobs,batch/v1 -> batch/v1
@@ -426,10 +426,10 @@ function select_kubectl_resource {
 }
 
 if [ -z "${!kubectl_resource:-}" ]; then
-	positional_args[0]="$(select_kubectl_resource)"
+	positional_args[0]="${ select_kubectl_resource; }"
 elif [ -n "${flag["select-resource"]:-}" ]; then
 	set +e
-	new_kubectl_resource="$(select_kubectl_resource)";
+	new_kubectl_resource="${ select_kubectl_resource; }";
 
 	# shellcheck disable=SC2181
 	if [ $? = 0 ]; then
@@ -503,11 +503,11 @@ read -r -d '' kubectl_select_container <<-EOF || true
 			;;
 	esac
 
-	containers="\$(
+	containers="\${
 		${kubectl_get_yaml[*]/--output=yaml/} \
 			--output jsonpath="\${jsonpath}" \
 		| tr ' ' $'\n'
-	)"
+	}"
 
 	if [ -z "\$containers" ]; then
 		echo $kubectl_object_kind $fzf_kubectl_resource has no containers
@@ -519,7 +519,7 @@ read -r -d '' kubectl_select_container <<-EOF || true
 	| fzf \
 		${fzf_common_opts[*]@Q} \
 		--prompt 'Selcct Container> ' \
-		--info-command='$(fzf_info_command)' \
+		--info-command='${ fzf_info_command; }' \
 		--preview-window='right,30%'
 EOF
 
@@ -577,18 +577,18 @@ case "${!kubectl_resource}" in
 		match_on_name_or_shortname="^($match_name$match_any_shortname|$match_any_name$match_shortname)$match_group_name$match_any_namespaced$match_any_kind\$"
 		match_on_kind="^$match_any_name$match_any_shortname$match_group_name$match_any_namespaced$kubectl_resource_name\$"
 
-		kubectl_resource_kind="$(
+		kubectl_resource_kind="${
 			kubectl_api_resources "${kubectl_common_opts[@]/--force-colors/--plain}" \
 			| grep -iE "$match_on_name_or_shortname|$match_on_kind" \
 			| head -n 1
-		)"
+		}"
 		;;
 	*)
-		kubectl_resource_kind="$(
+		kubectl_resource_kind="${
 			kubectl_api_resources \
 			| grep -iE "(^|,|\s)${!kubectl_resource}(\s|,|$)" \
 			| head -n 1
-		)"
+		}"
 		;;
 esac
 
@@ -603,7 +603,7 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 	"${fzf_kubectl_opts[@]}" \
 	"${fzf_watch_opts[@]}" \
 	--prompt "${kubectl_resource_kind}> " \
-	--info-command="$(fzf_info_command)" \
+	--info-command="${ fzf_info_command; }" \
 	--query="${!fzf_query:-}" \
 	--accept-nth="$fzf_kubectl_resource" \
 	--bind='change:transform-search:
@@ -613,8 +613,8 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 		fi
 	' \
 	--bind="ctrl-r:+reload-sync:${kubectl_get[*]}" \
-	--bind="alt-a:$(with_mux "${kubectl_attach[*]}")" \
-	--bind="alt-A:$(cat <<-EOF | with_mux
+	--bind="alt-a:${ with_mux "${kubectl_attach[*]}"; }" \
+	--bind="alt-A:${ cat <<-EOF | with_mux
 		${kubectl_select_container} \
 			--expect='alt-t' \
 			--preview='cat <<-EOP
@@ -631,12 +631,12 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 
 		${kubectl_attach[*]@Q} "\${extra_opts[@]}" --container="\${selected[1]}"
 	EOF
-	)" \
-	--bind="alt-d:$(with_mux "${kubectl_delete[*]}")" \
-	--bind="alt-D:$(with_mux "${kubectl_delete[*]}" --now)" \
-	--bind="alt-i:$(with_mux "$(kzf_live_pager "${kubectl_describe[*]}")")" \
-	--bind="alt-l:$(with_mux "$(kzf_log_pager "${kubectl_logs[@]}")")" \
-	--bind="alt-L:$(cat <<-EOF | with_mux
+	}" \
+	--bind="alt-d:${ with_mux "${kubectl_delete[*]}"; }" \
+	--bind="alt-D:${ with_mux "${kubectl_delete[*]}" --now; }" \
+	--bind="alt-i:${ with_mux "${ kzf_live_pager "${kubectl_describe[*]}"; }"; }" \
+	--bind="alt-l:${ with_mux "${ kzf_log_pager "${kubectl_logs[@]}"; }"; }" \
+	--bind="alt-L:${ cat <<-EOF | with_mux
 		${kubectl_select_container} \
 			--expect='alt-a,alt-c,alt-p' \
 			--preview='cat <<-EOP
@@ -655,17 +655,17 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 			*) extra_opts+=("--container=\${selected[1]}") ;;
 		esac
 
-		eval "\$(kzf_log_pager "${kubectl_logs[@]}" "\${extra_opts[@]}")"
+		eval "\${ kzf_log_pager "${kubectl_logs[@]}" "\${extra_opts[@]}"; }"
 	EOF
-	)" \
-	--bind="alt-r:$(with_mux "${kubectl_restart[*]} || $let_user_read_error")" \
-	--bind="alt-x:$(cat <<-EOF | with_mux
+	}" \
+	--bind="alt-r:${ with_mux "${kubectl_restart[*]} || $let_user_read_error"; }" \
+	--bind="alt-x:${ cat <<-EOF | with_mux
 		${read_kubectl_exec_cmd[*]@Q}
 		eval ${kubectl_exec[*]@Q} -it -- \$cmd \
 		|| $let_user_read_error
 	EOF
-	)" \
-	--bind="alt-X:$(cat <<-EOF | with_mux
+	}" \
+	--bind="alt-X:${ cat <<-EOF | with_mux
 		${kubectl_select_container} \
 			--expect='alt-t' \
 			--preview='cat <<-EOP
@@ -684,12 +684,12 @@ FZF_DEFAULT_COMMAND="${kubectl_get[*]}" exec fzf \
 		eval ${kubectl_exec[*]@Q} "\${extra_opts[@]}" --container="\${selected[1]}" -- \$cmd \
 		|| $let_user_read_error
 	EOF
-	)" \
-	--bind="alt-y:$(with_mux "${kubectl_get_yaml[*]@Q} | ${option["pager"]}")" \
-	--bind="f2:become:$0 $(fmt_flags_for_fzf show-labels) --show-labels${flag["show-labels"]:+=false}" \
-	--bind="alt-c:become:$0 $(fmt_flags_for_fzf select) --select-context" \
-	--bind="alt-n:become:$0 $(fmt_flags_for_fzf select) --select-namespace" \
-	--bind="alt-k:become:$0 $(fmt_flags_for_fzf select) --select-resource" \
+	}" \
+	--bind="alt-y:${ with_mux "${kubectl_get_yaml[*]@Q} | ${option["pager"]}"; }" \
+	--bind="f2:become:$0 ${ fmt_flags_for_fzf show-labels; } --show-labels${flag["show-labels"]:+=false}" \
+	--bind="alt-c:become:$0 ${ fmt_flags_for_fzf select; } --select-context" \
+	--bind="alt-n:become:$0 ${ fmt_flags_for_fzf select; } --select-namespace" \
+	--bind="alt-k:become:$0 ${ fmt_flags_for_fzf select; } --select-resource" \
 	--ghost='Press F1 for help' \
 	--preview-window="hidden" \
 	--bind='f1:change-preview-window(right,30%|hidden)' \
